@@ -396,37 +396,49 @@ class AdminComponent {
                 const userVal = container.querySelector('#admin-user-input').value.trim();
                 const passVal = passInput.value;
 
-                const res = await authService.loginAdminWithCredentials(userVal, passVal);
-                if (res.success && authService.isAdminSessionActive()) {
-                    const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
-                    if (window.Swal) {
-                        await Swal.fire({
-                            title: "¡Bienvenido al Panel CMS!",
-                            text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
-                            icon: "success",
-                            timer: 1500,
-                            showConfirmButton: false,
-                            draggable: true
-                        });
+                try {
+                    const res = await authService.loginAdminWithCredentials(userVal, passVal);
+                    if (res && res.success && authService.isAdminSessionActive()) {
+                        const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
+                        if (window.Swal) {
+                            await Swal.fire({
+                                title: "¡Bienvenido al Panel CMS!",
+                                text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
+                                icon: "success",
+                                timer: 1500,
+                                showConfirmButton: false,
+                                draggable: true
+                            });
+                        } else {
+                            app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        }
+                        this.render(container);
                     } else {
-                        app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
+                            ? res.error
+                            : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                        if (window.Swal) {
+                            Swal.fire({
+                                title: "Acceso Denegado",
+                                text: cleanErr,
+                                icon: "error",
+                                draggable: true,
+                                confirmButtonColor: "#173789",
+                                confirmButtonText: "Reintentar"
+                            });
+                        } else {
+                            app.showToast(cleanErr, 'danger');
+                        }
                     }
-                    this.render(container);
-                } else {
-                    const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
-                        ? res.error
-                        : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                } catch (submitErr) {
+                    console.error('[AdminComponent] Error al iniciar sesión administrativa:', submitErr);
                     if (window.Swal) {
                         Swal.fire({
-                            title: "Acceso Denegado",
-                            text: cleanErr,
+                            title: "Error de Validación",
+                            text: submitErr.message || "Ocurrió un error inesperado al procesar las credenciales.",
                             icon: "error",
-                            draggable: true,
-                            confirmButtonColor: "#173789",
-                            confirmButtonText: "Reintentar"
+                            confirmButtonColor: "#173789"
                         });
-                    } else {
-                        app.showToast(cleanErr, 'danger');
                     }
                 }
             });
@@ -3509,6 +3521,19 @@ class AdminComponent {
                     lastModified: Date.now()
                 };
 
+                // Si la tarjeta pertenece a la sección de noticias, asegurar campos esenciales para renderizar en Noticias
+                const secClean = (targetSecVal || '').toLowerCase();
+                if (secClean === 'sec_noticias' || secClean === 'noticias' || (currentData.id || '').startsWith('news_')) {
+                    if (!updated.publicationDate && !updated.date && !updated.fecha) {
+                        updated.publicationDate = new Date().toISOString();
+                    }
+                    if (!updated.issuerName) updated.issuerName = 'Cooperativa COLUA R.L.';
+                    if (!updated.issuerRole) updated.issuerRole = 'Comunicación Oficial';
+                    if (!updated.tags) updated.tags = '#COLUA';
+                    updated.likesCount = Number(updated.likesCount) || 0;
+                    updated.sharesCount = Number(updated.sharesCount) || 0;
+                }
+
                 await coluaRepo.saveContentItem(updated);
 
                 // Si es un formulario, guardarlo también en la colección forms de coluaRepo
@@ -4091,10 +4116,11 @@ class AdminComponent {
                 } else {
                     Swal.fire({
                         title: "Error al Publicar",
-                        text: res.error || "Ocurrió un problema durante la sincronización.",
+                        text: res.error || "Ocurrió un problema durante la sincronización con Firestore Cloud.",
                         icon: "error",
-                        timer: 2500,
-                        showConfirmButton: false,
+                        showConfirmButton: true,
+                        confirmButtonColor: "#173789",
+                        confirmButtonText: "Entendido",
                         draggable: true
                     });
                 }
