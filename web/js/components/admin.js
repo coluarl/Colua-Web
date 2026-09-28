@@ -3509,19 +3509,6 @@ class AdminComponent {
                     lastModified: Date.now()
                 };
 
-                // Si la tarjeta pertenece a la sección de noticias, asegurar campos esenciales para renderizar en Noticias
-                const secClean = (targetSecVal || '').toLowerCase();
-                if (secClean === 'sec_noticias' || secClean === 'noticias' || (currentData.id || '').startsWith('news_')) {
-                    if (!updated.publicationDate && !updated.date && !updated.fecha) {
-                        updated.publicationDate = new Date().toISOString();
-                    }
-                    if (!updated.issuerName) updated.issuerName = 'Cooperativa COLUA R.L.';
-                    if (!updated.issuerRole) updated.issuerRole = 'Comunicación Oficial';
-                    if (!updated.tags) updated.tags = '#COLUA';
-                    updated.likesCount = Number(updated.likesCount) || 0;
-                    updated.sharesCount = Number(updated.sharesCount) || 0;
-                }
-
                 await coluaRepo.saveContentItem(updated);
 
                 // Si es un formulario, guardarlo también en la colección forms de coluaRepo
@@ -4104,11 +4091,10 @@ class AdminComponent {
                 } else {
                     Swal.fire({
                         title: "Error al Publicar",
-                        text: res.error || "Ocurrió un problema durante la sincronización con Firestore Cloud.",
+                        text: res.error || "Ocurrió un problema durante la sincronización.",
                         icon: "error",
-                        showConfirmButton: true,
-                        confirmButtonColor: "#173789",
-                        confirmButtonText: "Entendido",
+                        timer: 2500,
+                        showConfirmButton: false,
                         draggable: true
                     });
                 }

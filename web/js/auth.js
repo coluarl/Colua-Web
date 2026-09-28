@@ -341,13 +341,11 @@ class AuthManager {
         loginTime: Date.now()
       };
       this.setAdminSessionActive(true);
-      if (repo && typeof repo.ensureFirebaseAuthAdmin === 'function') {
-        try { await repo.ensureFirebaseAuthAdmin(this.currentAdminSession.user); } catch (e) {}
-      }
       return { success: true, user: this.currentAdminSession.user };
     }
 
     // 2. Verificación de Administradores y Managers autorizados en el Repositorio
+    const repo = this.repo || window.coluaRepo || window.coluaRepository;
     if (repo && typeof repo.getAllUsers === 'function') {
       try {
         const users = await repo.getAllUsers();
@@ -372,9 +370,6 @@ class AuthManager {
             loginTime: Date.now()
           };
           this.setAdminSessionActive(true);
-          if (repo && typeof repo.ensureFirebaseAuthAdmin === 'function') {
-            try { await repo.ensureFirebaseAuthAdmin(this.currentAdminSession.user); } catch (e) {}
-          }
           return { success: true, user: this.currentAdminSession.user };
         }
       } catch (e) {
@@ -410,9 +405,6 @@ class AuthManager {
             loginTime: Date.now()
           };
           this.setAdminSessionActive(true);
-          if (repo && typeof repo.ensureFirebaseAuthAdmin === 'function') {
-            try { await repo.ensureFirebaseAuthAdmin(this.currentAdminSession.user); } catch (e) {}
-          }
           return { success: true, user: this.currentAdminSession.user };
         } else {
           return { success: false, error: 'Esta cuenta no tiene permisos asignados de Administrador CMS.' };
