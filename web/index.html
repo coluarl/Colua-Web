@@ -55,7 +55,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS del Sistema de Diseño Minimalista COLUA -->
-    <link rel="stylesheet" href="css/styles.css?v=2.0.1">
+    <link rel="stylesheet" href="css/styles.css?v=2.0.3">
 
     <!-- SweetAlert2 (Notificaciones y Alertas Modales Institucionales) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -70,25 +70,25 @@
     <script defer src="js/config.js?v=3.0.1"></script>
     <script defer src="js/qr-generator.js?v=3.2.0"></script>
     <script defer src="js/firebase-client.js?v=3.0.1"></script>
-    <script defer src="js/supabase-client.js?v=3.0.1"></script>
+    <script defer src="js/supabase-client.js?v=3.6.0"></script>
     <script defer src="js/auth.js?v=3.0.1"></script>
-    <script defer src="js/repository.js?v=3.2.0"></script>
+    <script defer src="js/repository.js?v=3.6.0"></script>
 
     <!-- Componentes de Interfaz UI -->
-    <script defer src="js/components/navbar.js?v=3.1.1"></script>
+    <script defer src="js/components/navbar.js?v=3.2.0"></script>
     <script defer src="js/components/sidebar.js?v=3.1.1"></script>
     <script defer src="js/components/bottom-nav.js?v=3.1.1"></script>
-    <script defer src="js/components/home.js?v=3.1.1"></script>
-    <script defer src="js/components/sections.js?v=3.1.1"></script>
+    <script defer src="js/components/home.js?v=3.6.0"></script>
+    <script defer src="js/components/sections.js?v=3.6.0"></script>
     <script defer src="js/components/noticias.js?v=3.1.1"></script>
     <script defer src="js/components/agencias.js?v=3.1.1"></script>
     <script defer src="js/components/perfil.js?v=3.1.1"></script>
-    <script defer src="js/components/admin.js?v=3.2.0"></script>
+    <script defer src="js/components/admin.js?v=3.6.0"></script>
     <script defer src="js/components/chatbot.js?v=3.1.1"></script>
 
     <!-- Router y Bootstrap Principal -->
     <script defer src="js/router.js?v=3.2.0"></script>
-    <script defer src="js/app.js?v=3.2.0"></script>
+    <script defer src="js/app.js?v=3.6.0"></script>
 </head>
 <body>
     <!-- ==============================================
@@ -289,149 +289,62 @@
                 </p>
             </header>
 
-            <!-- Cuadrícula 3x3 de 9 Tarjetas -->
-            <section class="clean-cards-grid" aria-label="Áreas de Gestión Cooperativa">
-                
-                <!-- 1. Cuentas de Ahorro -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')" role="button" tabindex="0" title="Ver Cuentas de Ahorro">
+            <!-- Cuadrícula de Carga Rápida (Skeleton Shimmer) para evitar parpadeos con versiones anteriores -->
+            <section class="clean-cards-grid clean-cards-skeleton" aria-label="Cargando contenido oficial...">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/ahorros.png" alt="Ahorros" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Cuentas de Ahorro</h3>
-                        <p class="clean-card-desc-text">Aportaciones, Ahorro Infantil y Planes Programados.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 2. Créditos -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')" role="button" tabindex="0" title="Ver Líneas de Crédito">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/credito.png" alt="Créditos" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Créditos</h3>
-                        <p class="clean-card-desc-text">Productivo, Consumo, Vivienda y Vehículo con tasas justas.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 3. Seguros Columna -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros')" role="button" tabindex="0" title="Ver Seguros Columna">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/seguro.png" alt="Seguros Columna" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Seguros Columna</h3>
-                        <p class="clean-card-desc-text">Protección de vida, gastos médicos y coberturas solidarias.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 4. Remesas Familiares -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas')" role="button" tabindex="0" title="Ver Remesas Familiares">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/remesa.png" alt="Remesas Familiares" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Remesas Familiares</h3>
-                        <p class="clean-card-desc-text">Recibe directo a tu cuenta con beneficio de repatriación.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 5. Tus 6 Beneficios -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')" role="button" tabindex="0" title="Ver Tus 6 Beneficios">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/beneficios.png" alt="Tus 6 Beneficios" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Tus 6 Beneficios</h3>
-                        <p class="clean-card-desc-text">Hospitalización, seguro de ahorrantes y beneficio de oro.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 6. Agencias & PBX -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')" role="button" tabindex="0" title="Ver Agencias y PBX">
+                <div class="clean-item-card skeleton-card">
                     <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/ubicacion.png" alt="Agencias & PBX" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
+                        <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Agencias & PBX</h3>
-                        <p class="clean-card-desc-text">25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez.</p>
+                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div class="skeleton-line skeleton-title"></div>
+                        <div class="skeleton-line skeleton-sub"></div>
                     </div>
                 </div>
-
-                <!-- 7. Servicios Digitales -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')" role="button" tabindex="0" title="Ver Servicios Digitales">
-                    <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/servicios_digitales.png" alt="Servicios Digitales" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
-                    </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Servicios Digitales</h3>
-                        <p class="clean-card-desc-text">MICOOPE en Línea, App Móvil y Notificaciones SMS.</p>
-                    </div>
-                </div>
-
-                <!-- 8. Noticias & Comunidad -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')" role="button" tabindex="0" title="Ver Noticias y Comunidad">
-                    <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/noticias.png" alt="Noticias & Comunidad" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
-                    </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Noticias & Comunidad</h3>
-                        <p class="clean-card-desc-text">Comunicados oficiales, jornadas y convocatorias.</p>
-                    </div>
-                </div>
-
-                <!-- 8. Sostenibilidad & Formación -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad')" role="button" tabindex="0" title="Ver Sostenibilidad y Formación">
-                    <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/sostenibilidad_cooperativa.png" alt="Sostenibilidad & Formación" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
-                    </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Sostenibilidad & Formación</h3>
-                        <p class="clean-card-desc-text">Becas educativas, talleres y programa Wachalal.</p>
-                    </div>
-                </div>
-
-                <!-- 9. Nosotros -->
-                <div class="clean-item-card" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')" role="button" tabindex="0" title="Conocer Nosotros">
-                    <div class="clean-card-top-row">
-                        <div class="clean-card-icon-box">
-                            <img src="assets/distintivo_colua.png" alt="Nosotros" class="clean-card-icon-img" />
-                        </div>
-                        <span class="clean-card-arrow-icon">→</span>
-                    </div>
-                    <div class="clean-card-info-bottom">
-                        <h3 class="clean-card-title-text">Nosotros</h3>
-                        <p class="clean-card-desc-text">Valores cooperativos, historia y propósito visionario.</p>
-                    </div>
-                </div>
-
             </section>
 
             <!-- Banners de Atención y Banca Digital -->

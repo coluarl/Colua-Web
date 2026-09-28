@@ -82,23 +82,87 @@ class NavbarComponent {
         <div class="navbar-menu-row">
           <div class="navbar-container">
             <nav class="desktop-nav-menu" aria-label="Navegación Principal">
-              <button class="nav-link-btn ${isHome ? 'active' : ''}" data-nav="sec_home" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#sec_home')">Inicio</button>
-              <button class="nav-link-btn ${clean === 'sec_ahorros' || clean === 'ahorros' ? 'active' : ''}" data-nav="sec_ahorros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')">Ahorros</button>
-              <button class="nav-link-btn ${clean === 'sec_creditos' || clean === 'creditos' ? 'active' : ''}" data-nav="sec_creditos" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')">Créditos</button>
-              <button class="nav-link-btn ${clean === 'sec_seguros' || clean === 'seguros' ? 'active' : ''}" data-nav="sec_seguros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros')">Seguros</button>
-              <button class="nav-link-btn ${clean === 'sec_remesas' || clean === 'remesas' ? 'active' : ''}" data-nav="sec_remesas" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas')">Remesas</button>
-              <button class="nav-link-btn ${clean === 'sec_servicios' || clean === 'servicios' ? 'active' : ''}" data-nav="sec_servicios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">Servicios</button>
-              <button class="nav-link-btn ${clean === 'sec_beneficios' || clean === 'beneficios' ? 'active' : ''}" data-nav="sec_beneficios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">Beneficios</button>
-              <button class="nav-link-btn ${clean === 'sec_sostenibilidad' || clean === 'sostenibilidad' ? 'active' : ''}" data-nav="sec_sostenibilidad" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad')">Sostenibilidad</button>
-              <button class="nav-link-btn ${clean === 'sec_noticias' || clean === 'noticias' ? 'active' : ''}" data-nav="sec_noticias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">Noticias</button>
-              <button class="nav-link-btn ${clean === 'sec_agencias' || clean === 'agencias' ? 'active' : ''}" data-nav="sec_agencias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">Agencias</button>
-              <button class="nav-link-btn ${clean === 'sec_nosotros' || clean === 'nosotros' ? 'active' : ''}" data-nav="sec_nosotros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Nosotros</button>
-              <button class="nav-link-btn ${clean === 'admin' ? 'active' : ''}" data-nav="admin" onclick="window.coluaRouter ? window.coluaRouter.navigate('admin') : (window.location.hash='#admin')">Portal Administrativo</button>
+              ${this.renderNavItems(clean, isHome)}
             </nav>
           </div>
         </div>
       </header>
     `;
+  }
+
+  renderNavItems(clean, isHome) {
+    const items = window.coluaRepository ? window.coluaRepository.getTopNavItemsSync() : [];
+    if (!items || items.length === 0) {
+      return `
+        <button class="nav-link-btn ${isHome ? 'active' : ''}" data-nav="sec_home" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#sec_home')">Inicio</button>
+        <button class="nav-link-btn ${clean === 'sec_ahorros' || clean === 'ahorros' ? 'active' : ''}" data-nav="sec_ahorros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')">Ahorros</button>
+        <button class="nav-link-btn ${clean === 'sec_creditos' || clean === 'creditos' ? 'active' : ''}" data-nav="sec_creditos" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')">Créditos</button>
+        <button class="nav-link-btn ${clean === 'sec_seguros' || clean === 'seguros' ? 'active' : ''}" data-nav="sec_seguros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros')">Seguros</button>
+        <button class="nav-link-btn ${clean === 'sec_remesas' || clean === 'remesas' ? 'active' : ''}" data-nav="sec_remesas" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas')">Remesas</button>
+        <button class="nav-link-btn ${clean === 'sec_servicios' || clean === 'servicios' ? 'active' : ''}" data-nav="sec_servicios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">Servicios</button>
+        <button class="nav-link-btn ${clean === 'sec_beneficios' || clean === 'beneficios' ? 'active' : ''}" data-nav="sec_beneficios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">Beneficios</button>
+        <button class="nav-link-btn ${clean === 'sec_sostenibilidad' || clean === 'sostenibilidad' ? 'active' : ''}" data-nav="sec_sostenibilidad" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad')">Sostenibilidad</button>
+        <button class="nav-link-btn ${clean === 'sec_noticias' || clean === 'noticias' ? 'active' : ''}" data-nav="sec_noticias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">Noticias</button>
+        <button class="nav-link-btn ${clean === 'sec_agencias' || clean === 'agencias' ? 'active' : ''}" data-nav="sec_agencias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">Agencias</button>
+        <button class="nav-link-btn ${clean === 'sec_nosotros' || clean === 'nosotros' ? 'active' : ''}" data-nav="sec_nosotros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Nosotros</button>
+        <button class="nav-link-btn ${clean === 'admin' ? 'active' : ''}" data-nav="admin" onclick="window.coluaRouter ? window.coluaRouter.navigate('admin') : (window.location.hash='#admin')">Portal Administrativo</button>
+      `;
+    }
+
+    return items.map(item => {
+      const tgt = (item.targetSectionId || '').trim();
+      const tgtClean = tgt.replace(/^sec_/, '').toLowerCase();
+      const hasSub = Array.isArray(item.subItems) && item.subItems.length > 0;
+      
+      let isSubActive = false;
+      if (hasSub) {
+        isSubActive = item.subItems.some(sub => {
+          const sTgt = (sub.targetSectionId || '').trim().replace(/^sec_/, '').toLowerCase();
+          return sTgt === clean || sub.targetSectionId === clean;
+        });
+      }
+
+      const isActive = (tgt === 'sec_home' && isHome) || (tgtClean === clean) || (tgt.toLowerCase() === clean) || isSubActive;
+
+      if (hasSub) {
+        return `
+          <div class="nav-dropdown-wrapper">
+            <button class="nav-link-btn nav-has-dropdown ${isActive ? 'active' : ''}" data-nav="${tgt}" onclick="if('${tgt}'){ window.coluaRouter ? window.coluaRouter.navigate('${tgt}') : (window.location.hash='#${tgt}') }">
+              <span>${item.label}</span>
+              <svg class="dropdown-chevron-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-dropdown-content">
+              ${tgt ? `
+                <a href="#${tgt}" class="nav-dropdown-item main-link" onclick="event.preventDefault(); window.coluaRouter ? window.coluaRouter.navigate('${tgt}') : (window.location.hash='#${tgt}')">
+                  Ver ${item.label} →
+                </a>
+                <div class="nav-dropdown-divider"></div>
+              ` : ''}
+              ${item.subItems.map(sub => `
+                <a href="#${sub.targetSectionId}" class="nav-dropdown-item" onclick="event.preventDefault(); window.coluaRouter ? window.coluaRouter.navigate('${sub.targetSectionId}') : (window.location.hash='#${sub.targetSectionId}')">
+                  ${sub.label}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <button class="nav-link-btn ${isActive ? 'active' : ''}" data-nav="${tgt}" onclick="window.coluaRouter ? window.coluaRouter.navigate('${tgt}') : (window.location.hash='#${tgt}')">
+            ${item.label}
+          </button>
+        `;
+      }
+    }).join('');
+  }
+
+  refresh() {
+    const navEl = document.getElementById('navbar-root');
+    if (navEl) {
+      const currentRoute = window.router?.currentRoute || window.location.hash || 'sec_home';
+      navEl.innerHTML = this.render(currentRoute);
+      this.attachEvents();
+    }
   }
 
   attachEvents() {
@@ -153,6 +217,7 @@ class NavbarComponent {
 
     document.querySelectorAll('.desktop-nav-menu .nav-link-btn').forEach(btn => {
       const target = btn.getAttribute('data-nav');
+      if (!target) return;
       const targetClean = target.replace(/^sec_/, '');
       const rawClean = raw.replace(/^sec_/, '');
 
@@ -166,3 +231,4 @@ class NavbarComponent {
 }
 
 window.navbarComponent = new NavbarComponent();
+

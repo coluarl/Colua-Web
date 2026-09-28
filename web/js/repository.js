@@ -164,6 +164,11 @@ class ColuaRepository {
       changed = true;
     }
 
+    if (!db.top_nav_items || db.top_nav_items.length === 0) {
+      db.top_nav_items = this.getDefaultTopNavItems();
+      changed = true;
+    }
+
     if (changed) {
       this.saveLocalDb(db);
     }
@@ -1310,6 +1315,135 @@ class ColuaRepository {
       try { await this.fb.collection('navigation_items').doc(navItem.id).set(navItem, { merge: true }); } catch (e) {}
     }
     return navItem;
+  }
+
+  // --- GESTIÓN DEL MENÚ SUPERIOR DE NAVEGACIÓN (Desktop Navbar y Submenús) ---
+  getDefaultTopNavItems() {
+    return [
+      { id: "topnav_home", label: "Inicio", targetSectionId: "sec_home", displayOrder: 1, isVisible: true, subItems: [] },
+      { id: "topnav_ahorros", label: "Ahorros", targetSectionId: "sec_ahorros", displayOrder: 2, isVisible: true, subItems: [] },
+      { id: "topnav_creditos", label: "Créditos", targetSectionId: "sec_creditos", displayOrder: 3, isVisible: true, subItems: [] },
+      { id: "topnav_seguros", label: "Seguros", targetSectionId: "sec_seguros", displayOrder: 4, isVisible: true, subItems: [] },
+      { id: "topnav_remesas", label: "Remesas", targetSectionId: "sec_remesas", displayOrder: 5, isVisible: true, subItems: [] },
+      { id: "topnav_servicios", label: "Servicios", targetSectionId: "sec_servicios", displayOrder: 6, isVisible: true, subItems: [] },
+      { id: "topnav_beneficios", label: "Beneficios", targetSectionId: "sec_beneficios", displayOrder: 7, isVisible: true, subItems: [] },
+      { id: "topnav_sostenibilidad", label: "Sostenibilidad", targetSectionId: "sec_sostenibilidad", displayOrder: 8, isVisible: true, subItems: [] },
+      { id: "topnav_noticias", label: "Noticias", targetSectionId: "sec_noticias", displayOrder: 9, isVisible: true, subItems: [] },
+      { id: "topnav_agencias", label: "Agencias", targetSectionId: "sec_agencias", displayOrder: 10, isVisible: true, subItems: [] },
+      { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros", displayOrder: 11, isVisible: true, subItems: [] },
+      { id: "topnav_admin", label: "Portal Administrativo", targetSectionId: "admin", displayOrder: 12, isVisible: true, subItems: [] }
+    ];
+  }
+
+  getTopNavItemsSync() {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items || db.top_nav_items.length === 0) {
+      db.top_nav_items = this.getDefaultTopNavItems();
+      this.saveLocalDb(db);
+    }
+    return (db.top_nav_items || [])
+      .filter(item => item.isVisible !== false)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }
+
+  async getTopNavItems() {
+    return this.getTopNavItemsSync();
+  }
+
+  async saveTopNavItem(item) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
+    if (!item.id) item.id = 'topnav_' + Math.random().toString(36).substring(2, 9);
+    if (!Array.isArray(item.subItems)) item.subItems = [];
+    if (typeof item.displayOrder !== 'number') item.displayOrder = db.top_nav_items.length + 1;
+
+    const idx = db.top_nav_items.findIndex(n => n.id === item.id);
+    if (idx >= 0) {
+      db.top_nav_items[idx] = { ...db.top_nav_items[idx], ...item };
+    } else {
+      db.top_nav_items.push(item);
+    }
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try { await this.fb.collection('top_nav_items').doc(item.id).set(item, { merge: true }); } catch (e) {}
+    }
+    return item;
+  }
+
+  async deleteTopNavItem(id) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return;
+    db.top_nav_items = db.top_nav_items.filter(n => n.id !== id);
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try { await this.fb.collection('top_nav_items').doc(id).delete(); } catch (e) {}
+    }
+  }
+
+  async addTopNavSubItem(parentId, subItem) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
+    const parent = db.top_nav_items.find(n => n.id === parentId);
+    if (!parent) return null;
+    if (!Array.isArray(parent.subItems)) parent.subItems = [];
+    if (!subItem.id) subItem.id = 'sub_' + Math.random().toString(36).substring(2, 9);
+    parent.subItems.push(subItem);
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
+    }
+    return subItem;
+  }
+
+  async updateTopNavSubItem(parentId, subItemId, updatedFields) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return null;
+    const parent = db.top_nav_items.find(n => n.id === parentId);
+    if (!parent || !Array.isArray(parent.subItems)) return null;
+    const sIdx = parent.subItems.findIndex(s => s.id === subItemId);
+    if (sIdx >= 0) {
+      parent.subItems[sIdx] = { ...parent.subItems[sIdx], ...updatedFields };
+      this.saveLocalDb(db);
+
+      if (this.fb && this.fb.db) {
+        try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
+      }
+      return parent.subItems[sIdx];
+    }
+    return null;
+  }
+
+  async deleteTopNavSubItem(parentId, subItemId) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return;
+    const parent = db.top_nav_items.find(n => n.id === parentId);
+    if (!parent || !Array.isArray(parent.subItems)) return;
+    parent.subItems = parent.subItems.filter(s => s.id !== subItemId);
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
+    }
+  }
+
+  async reorderTopNavItems(orderedIds) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return;
+    orderedIds.forEach((id, index) => {
+      const item = db.top_nav_items.find(n => n.id === id);
+      if (item) item.displayOrder = index + 1;
+    });
+    this.saveLocalDb(db);
+  }
+
+  async resetTopNavToDefaults() {
+    const db = this.getLocalDb();
+    db.top_nav_items = this.getDefaultTopNavItems();
+    this.saveLocalDb(db);
+    return db.top_nav_items;
   }
 
   // --- GESTIÓN DE USUARIOS Y PERFILES (Firestore) ---
@@ -2850,6 +2984,308 @@ class ColuaRepository {
     return { success: true, slots };
   }
 
+  // --- GESTIÓN DE BOTONES DEL MENÚ SUPERIOR Y SUB-BOTONES (NAVBAR DESKTOP) ---
+  getDefaultTopNavItems() {
+    return [
+      { id: 'topnav_inicio', label: 'Inicio', targetSectionId: 'sec_home', orderIndex: 1, subItems: [] },
+      { id: 'topnav_ahorros', label: 'Ahorros', targetSectionId: 'sec_ahorros', orderIndex: 2, subItems: [] },
+      { id: 'topnav_creditos', label: 'Créditos', targetSectionId: 'sec_creditos', orderIndex: 3, subItems: [] },
+      { id: 'topnav_seguros', label: 'Seguros', targetSectionId: 'sec_seguros', orderIndex: 4, subItems: [] },
+      { id: 'topnav_remesas', label: 'Remesas', targetSectionId: 'sec_remesas', orderIndex: 5, subItems: [] },
+      { id: 'topnav_servicios', label: 'Servicios', targetSectionId: 'sec_servicios', orderIndex: 6, subItems: [] },
+      { id: 'topnav_beneficios', label: 'Beneficios', targetSectionId: 'sec_beneficios', orderIndex: 7, subItems: [] },
+      { id: 'topnav_sostenibilidad', label: 'Sostenibilidad', targetSectionId: 'sec_sostenibilidad', orderIndex: 8, subItems: [] },
+      { id: 'topnav_noticias', label: 'Noticias', targetSectionId: 'sec_noticias', orderIndex: 9, subItems: [] },
+      { id: 'topnav_agencias', label: 'Agencias', targetSectionId: 'sec_agencias', orderIndex: 10, subItems: [] },
+      { id: 'topnav_nosotros', label: 'Nosotros', targetSectionId: 'sec_nosotros', orderIndex: 11, subItems: [] },
+      { id: 'topnav_admin', label: 'Portal Administrativo', targetSectionId: 'admin', orderIndex: 12, subItems: [] }
+    ];
+  }
+
+  getTopNavItemsSync() {
+    try {
+      const db = this.getLocalDb();
+      let items = db.top_nav_items || (db.global_config && db.global_config.top_nav_items);
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        items = this.getDefaultTopNavItems();
+        db.top_nav_items = items;
+        if (!db.global_config) db.global_config = {};
+        db.global_config.top_nav_items = items;
+        this.saveLocalDb(db);
+      }
+      return items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    } catch (e) {
+      return this.getDefaultTopNavItems();
+    }
+  }
+
+  async getTopNavItems() {
+    if (this.fb && this.fb.db) {
+      try {
+        const snap = await this._withTimeout(this.fb.collection('config').doc('top_nav').get(), 2000);
+        if (snap && snap.exists && snap.data() && Array.isArray(snap.data().items)) {
+          const remoteItems = snap.data().items;
+          const db = this.getLocalDb();
+          db.top_nav_items = remoteItems;
+          if (!db.global_config) db.global_config = {};
+          db.global_config.top_nav_items = remoteItems;
+          this.saveLocalDb(db);
+          return remoteItems.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+        }
+      } catch (e) {}
+    }
+    return this.getTopNavItemsSync();
+  }
+
+  async saveTopNavItem(item) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
+
+    if (!item.id) {
+      item.id = 'topnav_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    }
+    if (!item.orderIndex) {
+      item.orderIndex = db.top_nav_items.length + 1;
+    }
+    if (!Array.isArray(item.subItems)) {
+      item.subItems = [];
+    }
+
+    const idx = db.top_nav_items.findIndex(i => i.id === item.id);
+    if (idx >= 0) {
+      db.top_nav_items[idx] = { ...db.top_nav_items[idx], ...item };
+    } else {
+      db.top_nav_items.push(item);
+    }
+
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: idx >= 0 ? 'EDITAR_BOTON_NAVBAR' : 'CREAR_BOTON_NAVBAR',
+      performedBy: 'Super Administrador',
+      details: `Botón navbar: "${item.label}" asignado a pantalla: "${item.targetSectionId}" con ${item.subItems.length} sub-opciones.`
+    });
+
+    return { success: true, item };
+  }
+
+  async deleteTopNavItem(id) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
+
+    const removed = db.top_nav_items.find(i => i.id === id);
+    db.top_nav_items = db.top_nav_items.filter(i => i.id !== id);
+    db.top_nav_items.forEach((item, idx) => {
+      item.orderIndex = idx + 1;
+    });
+
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: 'ELIMINAR_BOTON_NAVBAR',
+      performedBy: 'Super Administrador',
+      details: `Se eliminó el botón del menú: "${removed ? removed.label : id}"`
+    });
+
+    return { success: true };
+  }
+
+  async addTopNavSubItem(parentId, subItem) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
+
+    const parent = db.top_nav_items.find(i => i.id === parentId);
+    if (!parent) return { success: false, error: 'Botón padre no encontrado' };
+
+    if (!Array.isArray(parent.subItems)) parent.subItems = [];
+
+    const newSub = {
+      id: subItem.id || ('sub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+      label: subItem.label || 'Nueva Sub-opción',
+      targetSectionId: subItem.targetSectionId || 'sec_home',
+      orderIndex: parent.subItems.length + 1
+    };
+
+    parent.subItems.push(newSub);
+
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: 'AGREGAR_SUBBOTON_NAVBAR',
+      performedBy: 'Super Administrador',
+      details: `Se agregó la sub-opción "${newSub.label}" -> "${newSub.targetSectionId}" al botón "${parent.label}".`
+    });
+
+    return { success: true, subItem: newSub };
+  }
+
+  async updateTopNavSubItem(parentId, subItem) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
+
+    const parent = db.top_nav_items.find(i => i.id === parentId);
+    if (!parent || !Array.isArray(parent.subItems)) return { success: false, error: 'Sub-botón no encontrado' };
+
+    const idx = parent.subItems.findIndex(s => s.id === subItem.id);
+    if (idx < 0) return { success: false, error: 'Sub-botón no encontrado' };
+
+    parent.subItems[idx] = { ...parent.subItems[idx], ...subItem };
+
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: 'EDITAR_SUBBOTON_NAVBAR',
+      performedBy: 'Super Administrador',
+      details: `Se actualizó la sub-opción "${subItem.label}" del botón "${parent.label}".`
+    });
+
+    return { success: true, subItem: parent.subItems[idx] };
+  }
+
+  async deleteTopNavSubItem(parentId, subId) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
+
+    const parent = db.top_nav_items.find(i => i.id === parentId);
+    if (!parent || !Array.isArray(parent.subItems)) return { success: false, error: 'Botón padre no encontrado' };
+
+    parent.subItems = parent.subItems.filter(s => s.id !== subId);
+
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: 'ELIMINAR_SUBBOTON_NAVBAR',
+      performedBy: 'Super Administrador',
+      details: `Se eliminó la sub-opción del botón "${parent.label}".`
+    });
+
+    return { success: true };
+  }
+
+  async reorderTopNavItems(orderedIds) {
+    const db = this.getLocalDb();
+    if (!db.top_nav_items) return { success: false };
+
+    const map = new Map(db.top_nav_items.map(i => [i.id, i]));
+    const reordered = [];
+
+    orderedIds.forEach((id, idx) => {
+      const item = map.get(id);
+      if (item) {
+        item.orderIndex = idx + 1;
+        reordered.push(item);
+        map.delete(id);
+      }
+    });
+
+    map.forEach(item => {
+      item.orderIndex = reordered.length + 1;
+      reordered.push(item);
+    });
+
+    db.top_nav_items = reordered;
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = db.top_nav_items;
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: db.top_nav_items,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    return { success: true, items: reordered };
+  }
+
+  async resetTopNavToDefaults() {
+    const defaults = this.getDefaultTopNavItems();
+    const db = this.getLocalDb();
+    db.top_nav_items = defaults;
+    if (!db.global_config) db.global_config = {};
+    db.global_config.top_nav_items = defaults;
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('config').doc('top_nav').set({
+          items: defaults,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }
+
+    await this.logAudit({
+      action: 'RESTABLECER_NAVBAR_DEFAULT',
+      performedBy: 'Super Administrador',
+      details: `Se restablecieron los 12 botones de menú estándar de COLUA.`
+    });
+
+    return { success: true, items: defaults };
+  }
+
   async toggleSectionVisibility(id) {
     const db = this.getLocalDb();
     const sec = db.sections.find(s => s.id === id);
@@ -3213,6 +3649,24 @@ class ColuaRepository {
   }
 
   // Aliases para compatibilidad con admin.js y otros componentes
+  async getItemById(id) {
+    if (!id) return null;
+    const db = this.getLocalDb();
+    const local = (db.content_items || []).find(i => i.id === id);
+    if (local) return local;
+    if (db.agencias) {
+      const ag = db.agencias.find(a => a.id === id);
+      if (ag) return ag;
+    }
+    if (this.fb && this.fb.db) {
+      try {
+        const snap = await this._withTimeout(this.fb.collection('content_items').doc(id).get(), 2500);
+        if (snap.exists) return { id: snap.id, ...snap.data() };
+      } catch (e) {}
+    }
+    return null;
+  }
+  async getContentItemById(id) { return this.getItemById(id); }
   async getContentItemsBySection(secId) { return this.getItemsBySection(secId, true); }
   async getAllContentItemsBySection(secId) { return this.getItemsBySection(secId, true); }
   async saveContentItem(item) { return this.insertItem(item); }

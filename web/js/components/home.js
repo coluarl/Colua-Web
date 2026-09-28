@@ -169,11 +169,12 @@ class HomeComponent {
         <section class="clean-cards-grid" aria-label="Áreas de Gestión Cooperativa">
           ${displayCards.map(s => {
             const rawRoute = (s.buttonAction || s.targetSectionId || s.id || '').trim();
-            const isFormModal = rawRoute.startsWith('form:') || rawRoute === 'modal:form' || rawRoute === 'form_asociate' || s.id === 'home_asociate' || (s.title || '').toLowerCase().includes('asociarte');
-            const isInfoModal = !isFormModal && (rawRoute === 'modal:info' || rawRoute === 'info_modal' || s.buttonAction === 'modal:info');
+            const isPdf = s.type === 'pdf_document' || rawRoute.startsWith('pdf:') || rawRoute.includes('indexeddb:') || (s.pdfUrl && s.pdfUrl.length > 0);
+            const isFormModal = !isPdf && (rawRoute.startsWith('form:') || rawRoute === 'modal:form' || rawRoute === 'form_asociate' || s.id === 'home_asociate' || (s.title || '').toLowerCase().includes('asociarte'));
+            const isInfoModal = !isPdf && !isFormModal && (rawRoute === 'modal:info' || rawRoute === 'info_modal' || s.buttonAction === 'modal:info');
 
             let targetRoute = rawRoute;
-            if (!isInfoModal && !isFormModal) {
+            if (!isInfoModal && !isFormModal && !isPdf) {
               if (rawRoute.startsWith('http') || rawRoute.startsWith('tel:') || rawRoute.startsWith('#') || rawRoute.startsWith('sec_')) {
                 targetRoute = rawRoute;
               } else if (rawRoute.startsWith('home_')) {
@@ -190,7 +191,10 @@ class HomeComponent {
             const iconImg = s.imageUrl || iconMap[s.id] || iconMap[s.iconName] || iconMap[s.targetSectionId] || 'assets/distintivo_colua.png';
             
             let clickAction = '';
-            if (isFormModal) {
+            if (isPdf) {
+              const pUrl = s.pdfUrl || (rawRoute.startsWith('pdf:') ? rawRoute.replace(/^pdf:/, '') : rawRoute);
+              clickAction = `window.openPdfDocument ? window.openPdfDocument('${pUrl}', '${(s.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${s.id}') : (window.app && window.app.openItemPdf ? window.app.openItemPdf('${s.id}', '${pUrl}') : null)`;
+            } else if (isFormModal) {
               const fId = rawRoute.replace('form:', '').trim() || 'form_asociate';
               clickAction = `app.showDynamicFormModal ? app.showDynamicFormModal('${fId}') : null`;
             } else if (isInfoModal) {

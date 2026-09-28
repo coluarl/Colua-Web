@@ -339,27 +339,43 @@ const App = {
             }
         } catch(e) {}
 
-        const iconImg = item.imageUrl || item.imagePath || 'assets/distintivo_colua.png';
+        const isPdf = item.type === 'pdf_document' || actionTarget.startsWith('pdf:') || actionTarget.toLowerCase().endsWith('.pdf') || (item.pdfUrl && item.pdfUrl.length > 0);
+        const iconImg = item.imageUrl || item.imagePath || (isPdf ? 'assets/distintivo_colua.png' : 'assets/distintivo_colua.png');
         const subtitleParts = item.subtitle ? item.subtitle.split(',').map(s => s.trim()).filter(Boolean) : [];
         const actionTarget = item.buttonAction || item.targetSectionId || 'tel:77957795';
-        const actionText = item.buttonText || (actionTarget.startsWith('tel:') ? 'Contactar por PBX: 7795-7795' : 'Gestionar Servicio');
+        const defaultActionText = isPdf ? 'Ver Documento PDF ↗' : (actionTarget.startsWith('tel:') ? 'Contactar por PBX: 7795-7795' : 'Gestionar Servicio');
+        const actionText = item.buttonText || defaultActionText;
 
-        const isTel = actionTarget.startsWith('tel:');
-        const isHttp = actionTarget.startsWith('http');
-        const isHash = actionTarget.startsWith('#');
+        const isTel = !isPdf && actionTarget.startsWith('tel:');
+        const isHttp = !isPdf && actionTarget.startsWith('http');
+        const isHash = !isPdf && actionTarget.startsWith('#');
 
-        const ctaClick = isTel ? `window.location.href='${actionTarget}'` : (isHttp ? `window.open('${actionTarget}','_blank')` : (isHash ? `app.closeModal(); if(window.coluaRouter) window.coluaRouter.navigate('${actionTarget.replace('#','')}'); else window.location.hash='${actionTarget}';` : `window.location.href='tel:77957795'`));
+        let ctaClick = `window.location.href='tel:77957795'`;
+        if (isPdf) {
+            const rawPdf = item.pdfUrl || (actionTarget.startsWith('pdf:') ? actionTarget.replace(/^pdf:/, '') : actionTarget);
+            ctaClick = `app.openItemPdf('${item.id}', '${encodeURI(rawPdf).replace(/'/g, "\\'")}')`;
+        } else if (isTel) {
+            ctaClick = `window.location.href='${actionTarget}'`;
+        } else if (isHttp) {
+            ctaClick = `window.open('${actionTarget}','_blank')`;
+        } else if (isHash) {
+            ctaClick = `app.closeModal(); if(window.coluaRouter) window.coluaRouter.navigate('${actionTarget.replace('#','')}'); else window.location.hash='${actionTarget}';`;
+        }
 
         const modalHtml = `
             <div style="max-width: 540px; width: 100%; text-align: left;">
                 <!-- Cabecera Institucional del Elemento -->
                 <div style="display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--colua-gray-200); padding-bottom: 16px;">
-                    <div style="width: 58px; height: 58px; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1.5px solid var(--colua-gray-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 6px;">
-                        <img src="${iconImg}" alt="${item.title}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.src='assets/distintivo_colua.png'" />
+                    <div style="width: 58px; height: 58px; border-radius: 12px; background: ${isPdf ? '#fef2f2' : '#ffffff'}; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1.5px solid ${isPdf ? '#fecaca' : 'var(--colua-gray-200)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 6px;">
+                        ${isPdf ? `
+                            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        ` : `
+                            <img src="${iconImg}" alt="${item.title}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.src='assets/distintivo_colua.png'" />
+                        `}
                     </div>
                     <div style="flex: 1;">
-                        <span class="badge" style="background: rgba(23, 55, 137, 0.08); color: var(--colua-navy); font-size: 0.72rem; font-weight: 700; margin-bottom: 4px; display: inline-block;">
-                            Información Detallada Oficial
+                        <span class="badge" style="background: ${isPdf ? '#fee2e2' : 'rgba(23, 55, 137, 0.08)'}; color: ${isPdf ? '#dc2626' : 'var(--colua-navy)'}; font-size: 0.72rem; font-weight: 700; margin-bottom: 4px; display: inline-block;">
+                            ${isPdf ? '📄 Documento Oficial en PDF' : 'Información Detallada Oficial'}
                         </span>
                         <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 4px 0; line-height: 1.25;">
                             ${item.title}
@@ -376,7 +392,7 @@ const App = {
                 ${item.description ? `
                     <div style="margin-bottom: 16px; background: #f8fafc; border-radius: 10px; padding: 14px; border: 1px solid var(--colua-gray-200);">
                         <span style="font-size: 0.74rem; font-weight: 700; color: var(--colua-gray-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
-                            Acerca de este producto o servicio
+                            ${isPdf ? 'Detalles del Documento' : 'Acerca de este producto o servicio'}
                         </span>
                         <p style="font-size: 0.9rem; color: var(--colua-gray-800); margin: 0; line-height: 1.55;">
                             ${item.description}
@@ -385,7 +401,7 @@ const App = {
                 ` : ''}
 
                 <!-- Atributos y Condiciones -->
-                ${subtitleParts.length > 0 ? `
+                ${subtitleParts.length > 0 && !isPdf ? `
                     <div style="margin-bottom: 16px;">
                         <span style="font-size: 0.74rem; font-weight: 700; color: var(--colua-gray-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px;">
                             Características Principales & Beneficios
@@ -422,8 +438,9 @@ const App = {
                     <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 9px 16px; font-size: 0.88rem;">
                         Cerrar
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="${ctaClick}" style="padding: 9px 20px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn ${isPdf ? '' : 'btn-primary'}" onclick="${ctaClick}" style="padding: 9px 20px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; ${isPdf ? 'background: #dc2626; color: #ffffff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(220,38,38,0.25); cursor: pointer;' : ''}">
                         ${isTel ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>` : ''}
+                        ${isPdf ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>` : ''}
                         <span>${actionText}</span>
                     </button>
                 </div>
@@ -431,6 +448,57 @@ const App = {
         `;
 
         this.showModal(modalHtml);
+    },
+
+    // ── Abrir Documento PDF en Nueva Pestaña (Navegador adicional) ────────────
+    async openItemPdf(itemId, fallbackUrl = '') {
+        try {
+            let pdfUrl = fallbackUrl ? decodeURI(fallbackUrl) : '';
+            let title = 'Documento Oficial COLUA';
+
+            if (window.coluaRepo && itemId) {
+                try {
+                    const item = await window.coluaRepo.getItemById(itemId);
+                    if (item) {
+                        title = item.title || title;
+                        if (item.pdfUrl) {
+                            pdfUrl = item.pdfUrl;
+                        } else if (item.buttonAction && item.buttonAction.startsWith('pdf:')) {
+                            pdfUrl = item.buttonAction.replace('pdf:', '').trim();
+                        } else if (item.buttonAction && (item.buttonAction.toLowerCase().endsWith('.pdf') || item.buttonAction.startsWith('data:application/pdf') || item.buttonAction.includes('indexeddb:'))) {
+                            pdfUrl = item.buttonAction.trim();
+                        }
+                    }
+                } catch (errRepo) {
+                    console.warn('[COLUA] Error obteniendo item por ID en openItemPdf:', errRepo);
+                }
+            }
+
+            if (pdfUrl && pdfUrl.startsWith('pdf:')) {
+                pdfUrl = pdfUrl.replace(/^pdf:/, '').trim();
+            }
+
+            if (window.openPdfDocument) {
+                await window.openPdfDocument(pdfUrl, title, itemId);
+            } else if (pdfUrl) {
+                window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                if (this.showNotification) {
+                    this.showNotification('No se encontró el archivo PDF en el almacenamiento.', 'error');
+                } else {
+                    alert('No se encontró el archivo PDF en el almacenamiento.');
+                }
+            }
+        } catch (e) {
+            console.error('Error al abrir PDF:', e);
+            if (fallbackUrl) {
+                if (window.openPdfDocument) {
+                    window.openPdfDocument(fallbackUrl, 'Documento Oficial');
+                } else {
+                    window.open(decodeURI(fallbackUrl), '_blank');
+                }
+            }
+        }
     },
 
     // ── Formulario Dinámico / Preguntas y Respuestas / Captación Directa ───────

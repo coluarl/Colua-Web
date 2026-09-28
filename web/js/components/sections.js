@@ -18,10 +18,22 @@ class SectionsComponent {
     return this.renderDynamicGeneric(cleanId);
   }
 
-  // Renderiza el botón de acción de la tarjeta soportando Ficha Informativa Emergente (Ver Más), Teléfono, Enlaces y Rutas
+  // Renderiza el botón de acción de la tarjeta soportando Ficha Informativa Emergente (Ver Más), Teléfono, Enlaces, PDF y Rutas
   _renderCardButton(buttonText, buttonAction, itemId, defaultText = 'Ver Más Información', defaultAction = 'tel:77957795') {
     const text = buttonText || defaultText;
     const action = (buttonAction || defaultAction || '').trim();
+
+    // Soporte para PDF: si la acción empieza con 'pdf:' o es una url pdf o base64 pdf o tiene extensión .pdf o indexeddb
+    if (action.startsWith('pdf:') || action.toLowerCase().endsWith('.pdf') || action.startsWith('data:application/pdf') || action.includes('indexeddb:')) {
+      const pdfTarget = action.replace(/^pdf:/, '').trim();
+      const escapedTitle = (text || 'Documento Oficial').replace(/'/g, "\\'");
+      return `
+        <button type="button" onclick="event.stopPropagation(); if(window.openPdfDocument){ window.openPdfDocument('${pdfTarget}', '${escapedTitle}', '${itemId || ''}'); } else if(window.app && window.app.openItemPdf){ window.app.openItemPdf('${itemId || ''}', '${pdfTarget}'); } else { window.open('${pdfTarget}', '_blank'); }" class="clean-btn-card-action" style="cursor: pointer; border: none; width: 100%; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #dc2626; color: #ffffff; font-weight: 700; border-radius: 8px; padding: 11px 16px; box-shadow: 0 2px 6px rgba(220,38,38,0.25); transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>${text || 'Ver Documento PDF'} ↗</span>
+        </button>
+      `;
+    }
 
     if (action.startsWith('form:') || action === 'modal:form' || action === 'form_asociate' || action === 'form_lead') {
       const fId = action.replace('form:', '').trim() || 'form_asociate';
@@ -751,25 +763,32 @@ class SectionsComponent {
         headerItem = dbItems.find(i => i.id === 'item_ben_header');
         const cardItems = dbItems.filter(i => i.id !== 'item_ben_header' && i.isVisible !== false && i.isEnabled !== false);
         if (cardItems.length > 0) {
-          beneficios = cardItems.map(i => ({
-            id: i.id,
-            titulo: i.title,
-            desc: i.description || i.shortDescription || '',
-            img: i.imageUrl || i.imagePath || 'assets/beneficios.png',
-            tag: i.subtitle || '✓ Incluido al ser Asociado'
-          }));
+          beneficios = cardItems.map(i => {
+            const isPdf = i.type === 'pdf_document' || (i.buttonAction && i.buttonAction.startsWith('pdf:')) || (i.pdfUrl && i.pdfUrl.length > 0);
+            return {
+              id: i.id,
+              titulo: i.title,
+              desc: i.description || i.shortDescription || '',
+              img: i.imageUrl || i.imagePath || 'assets/beneficios.png',
+              tag: i.subtitle || '✓ Incluido al ser Asociado',
+              buttonText: i.buttonText || (isPdf ? 'Ver Documento PDF' : 'Ver Más Información'),
+              buttonAction: i.buttonAction || (isPdf ? ('pdf:' + (i.pdfUrl || '')) : 'modal:info'),
+              pdfUrl: i.pdfUrl || '',
+              isPdf: isPdf
+            };
+          });
         }
       }
     } catch(e) { console.error(e); }
 
     if (beneficios.length === 0) {
       beneficios = [
-        { titulo: "Renta Diaria por Hospitalización", desc: "Apoyo económico diario en caso de ser internado en hospital público o privado.", img: "assets/renta_diaria.png", tag: "✓ Incluido al ser Asociado" },
-        { titulo: "Apoyo Quirúrgico", desc: "Apoyo económico para cubrir gastos médicos incurridos por intervenciones quirúrgicas.", img: "assets/apoyo_quirurgico.png", tag: "✓ Incluido al ser Asociado" },
-        { titulo: "Servicio Funerario", desc: "Sepelio digno y ataúd fúnebre para tranquilidad de la familia del asociado.", img: "assets/servicio_funerario.png", tag: "✓ Incluido al ser Asociado" },
-        { titulo: "Seguro de Ahorrantes", desc: "Devolución de ahorros más seguro sobre depósitos hasta por Q150,000.00.", img: "assets/beneficio_de_ahorrantes.png", tag: "✓ Hasta Q150,000.00" },
-        { titulo: "Seguro de Deudores", desc: "Cobertura de saldos insolutos de crédito vigente hasta por Q200,000.00 en siniestro.", img: "assets/beneficio_de_deudores.png", tag: "✓ Hasta Q200,000.00" },
-        { titulo: "Beneficio de Oro", desc: "Apoyo económico único para asociados mayores de 70 años con lealtad cooperativa.", img: "assets/beneficio_de_oro.png", tag: "✓ Mayores de 70 años" }
+        { id: "ben_hosp", titulo: "Renta Diaria por Hospitalización", desc: "Apoyo económico diario en caso de ser internado en hospital público o privado.", img: "assets/renta_diaria.png", tag: "✓ Incluido al ser Asociado" },
+        { id: "ben_quir", titulo: "Apoyo Quirúrgico", desc: "Apoyo económico para cubrir gastos médicos incurridos por intervenciones quirúrgicas.", img: "assets/apoyo_quirurgico.png", tag: "✓ Incluido al ser Asociado" },
+        { id: "ben_fune", titulo: "Servicio Funerario", desc: "Sepelio digno y ataúd fúnebre para tranquilidad de la familia del asociado.", img: "assets/servicio_funerario.png", tag: "✓ Incluido al ser Asociado" },
+        { id: "ben_ahorr", titulo: "Seguro de Ahorrantes", desc: "Devolución de ahorros más seguro sobre depósitos hasta por Q150,000.00.", img: "assets/beneficio_de_ahorrantes.png", tag: "✓ Hasta Q150,000.00" },
+        { id: "ben_deud", titulo: "Seguro de Deudores", desc: "Cobertura de saldos insolutos de crédito vigente hasta por Q200,000.00 en siniestro.", img: "assets/beneficio_de_deudores.png", tag: "✓ Hasta Q200,000.00" },
+        { id: "ben_oro", titulo: "Beneficio de Oro", desc: "Apoyo económico único para asociados mayores de 70 años con lealtad cooperativa.", img: "assets/beneficio_de_oro.png", tag: "✓ Mayores de 70 años" }
       ];
     }
 
@@ -784,20 +803,35 @@ class SectionsComponent {
         </header>
 
         <div class="clean-product-grid">
-          ${beneficios.map(b => `
-            <div class="clean-product-card">
-              <div>
-                <div class="clean-product-icon-wrap">
-                  <img src="${b.img}" alt="${b.titulo}" onerror="this.src='assets/beneficios.png'" />
+          ${beneficios.map(b => {
+            const rawPdf = b.pdfUrl || (b.buttonAction && b.buttonAction.startsWith('pdf:') ? b.buttonAction.replace('pdf:', '') : '');
+            return `
+              <div class="clean-product-card" ${b.isPdf ? `onclick="window.openPdfDocument('${rawPdf}', '${(b.titulo || 'Documento').replace(/'/g, "\\'")}', '${b.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
+                <div>
+                  <div class="clean-product-icon-wrap" ${b.isPdf ? 'style="background: #fef2f2; border: 1.5px solid #fecaca; height: 68px; display: flex; align-items: center; justify-content: center;"' : ''}>
+                    ${b.isPdf ? `
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    ` : `
+                      <img src="${b.img}" alt="${b.titulo}" onerror="this.src='assets/beneficios.png'" />
+                    `}
+                  </div>
+                  <h3 class="clean-product-name">${b.titulo}</h3>
+                  <p class="clean-product-desc">${b.desc}</p>
                 </div>
-                <h3 class="clean-product-name">${b.titulo}</h3>
-                <p class="clean-product-desc">${b.desc}</p>
+                <div>
+                  ${b.isPdf || (b.buttonAction && b.buttonAction !== 'modal:info') ? `
+                    <div style="margin-top: 14px;">
+                      ${this._renderCardButton(b.buttonText || (b.isPdf ? 'Ver Documento PDF' : 'Ver Más'), b.buttonAction, b.id, 'Ver Más Información')}
+                    </div>
+                  ` : `
+                    <div style="font-size:0.78rem;font-weight:600;color:#2563eb;margin-top: 8px;">
+                      ${b.tag || '✓ Incluido al ser Asociado'}
+                    </div>
+                  `}
+                </div>
               </div>
-              <div style="font-size:0.78rem;font-weight:600;color:#2563eb;">
-                ${b.tag || '✓ Incluido al ser Asociado'}
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
     `;
@@ -941,6 +975,7 @@ class SectionsComponent {
     let galArraigo = null;
     let galGobernanza = null;
     let contactBanner = null;
+    let customNosItems = [];
 
     try {
       const dbItems = await window.coluaRepository.getItemsBySection(secId);
@@ -957,6 +992,14 @@ class SectionsComponent {
         galArraigo = dbItems.find(i => i.id === 'item_nos_gal_arraigo');
         galGobernanza = dbItems.find(i => i.id === 'item_nos_gal_gobernanza');
         contactBanner = dbItems.find(i => i.id === 'item_nos_banner_contacto');
+
+        const standardNosIds = new Set([
+          'item_nos_header', 'item_nos_mision_vision', 'item_nos_vision', 'item_nos_proposito',
+          'item_nos_presencia', 'item_nos_val_integridad', 'item_nos_val_cooperacion',
+          'item_nos_val_responsabilidad', 'item_nos_val_enfoque', 'item_nos_gal_arraigo',
+          'item_nos_gal_gobernanza', 'item_nos_banner_contacto'
+        ]);
+        customNosItems = dbItems.filter(i => !standardNosIds.has(i.id) && i.isVisible !== false && i.isEnabled !== false && i.isDraft !== true);
       }
     } catch(e) { console.error(e); }
 
@@ -1201,6 +1244,51 @@ class SectionsComponent {
           </div>
         </section>
 
+        ${customNosItems && customNosItems.length > 0 ? `
+        <!-- Documentos Oficiales, Memorias de Labores y Publicaciones -->
+        <section class="nosotros-section-block">
+          <div class="nosotros-section-heading-bar">
+            <div>
+              <span class="nosotros-sec-eyebrow">DOCUMENTOS OFICIALES & MEMORIAS</span>
+              <h2 class="nosotros-sec-title">Publicaciones y Memorias de Labores</h2>
+              <p class="nosotros-sec-desc">Documentos oficiales, informes de rendición de cuentas y memorias institucionales de COLUA R.L.</p>
+            </div>
+          </div>
+
+          <div class="clean-product-grid">
+            ${customNosItems.map(i => {
+              const isPdf = i.type === 'pdf_document' || (i.buttonAction && i.buttonAction.startsWith('pdf:')) || (i.pdfUrl && i.pdfUrl.length > 0);
+              const rawPdf = i.pdfUrl || (i.buttonAction && i.buttonAction.startsWith('pdf:') ? i.buttonAction.replace('pdf:', '') : '');
+              const sizeFormatted = i.fileSize ? ` • ${(i.fileSize / (1024 * 1024)).toFixed(2)} MB` : '';
+              return `
+                <div class="clean-product-card" ${isPdf ? `onclick="window.openPdfDocument('${rawPdf}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
+                  <div>
+                    ${isPdf ? `
+                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                          DOCUMENTO OFICIAL
+                        </span>
+                        <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">PDF${sizeFormatted}</span>
+                      </div>
+                      <div class="clean-product-icon-wrap" style="margin-bottom: 12px; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px; display: flex; align-items: center; justify-content: center;">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      </div>
+                    ` : ''}
+                    <h3 class="clean-product-name">${i.title}</h3>
+                    ${i.subtitle ? `<span style="font-size:0.8rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">${i.subtitle}</span>` : ''}
+                    <p class="clean-product-desc">${i.description || 'Haz clic para abrir y visualizar el documento oficial en una nueva pestaña.'}</p>
+                  </div>
+                  <div style="margin-top: 14px;">
+                    ${this._renderCardButton(i.buttonText || (isPdf ? 'Ver Documento PDF' : 'Ver Más'), i.buttonAction || (isPdf ? ('pdf:' + rawPdf) : 'modal:info'), i.id, 'Ver Documento PDF')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </section>
+        ` : ''}
+
         <!-- 6. ATENCIÓN AL ASOCIADO Y PÚBLICO (BANNER PBX) -->
         <section class="nosotros-contact-banner">
           <div class="nosotros-contact-top">
@@ -1260,21 +1348,51 @@ class SectionsComponent {
 
     const items = await repo.getItemsBySection(sec ? sec.id : sectionId);
 
-    const itemsHtml = items.map(i => `
-      <div class="clean-product-card">
-        <div>
-          ${i.imageUrl || i.imagePath || i.icon ? `
-            <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f5f9;">
-              ${i.imageUrl || i.imagePath ? `<img src="${i.imageUrl || i.imagePath}" alt="${i.title}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"/>` : `<span style="font-size: 2rem;">${i.icon}</span>`}
+    const itemsHtml = items.map(i => {
+      const isPdf = i.type === 'pdf_document' || (i.buttonAction && i.buttonAction.startsWith('pdf:')) || (i.pdfUrl && i.pdfUrl.length > 0);
+      if (isPdf) {
+        const rawPdfUrl = i.pdfUrl || (i.buttonAction && i.buttonAction.startsWith('pdf:') ? i.buttonAction.replace('pdf:', '') : '');
+        const sizeFormatted = i.fileSize ? ` • ${(i.fileSize / (1024 * 1024)).toFixed(2)} MB` : '';
+        return `
+          <div class="clean-product-card" onclick="window.openPdfDocument ? window.openPdfDocument('${rawPdfUrl}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}') : null" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <span style="font-size: 0.72rem; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  DOCUMENTO OFICIAL
+                </span>
+                <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">PDF${sizeFormatted}</span>
+              </div>
+              <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px;">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              <h3 class="clean-product-name" style="font-size: 1.12rem; color: #0f172a; margin-bottom: 6px;">${i.title}</h3>
+              ${i.subtitle ? `<span style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">${i.subtitle}</span>` : ''}
+              <p class="clean-product-desc" style="margin-top: 0.5rem; color: #64748b; font-size: 0.88rem; line-height: 1.5;">${i.description || i.shortDescription || 'Documento oficial disponible para lectura y descarga en nueva pestaña.'}</p>
             </div>
-          ` : ''}
-          <h3 class="clean-product-name">${i.title}</h3>
-          ${i.subtitle ? `<span style="font-size:0.8rem;font-weight:600;color:#2563eb;">${i.subtitle}</span>` : ''}
-          <p class="clean-product-desc" style="margin-top:0.5rem;">${i.description || i.shortDescription || ''}</p>
+            <div style="margin-top: 14px;">
+              ${this._renderCardButton(i.buttonText || 'Ver Documento PDF', i.buttonAction || ('pdf:' + rawPdfUrl), i.id, 'Ver Documento PDF', 'pdf:' + rawPdfUrl)}
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="clean-product-card">
+          <div>
+            ${i.imageUrl || i.imagePath || i.icon ? `
+              <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f5f9;">
+                ${i.imageUrl || i.imagePath ? `<img src="${i.imageUrl || i.imagePath}" alt="${i.title}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"/>` : `<span style="font-size: 2rem;">${i.icon}</span>`}
+              </div>
+            ` : ''}
+            <h3 class="clean-product-name">${i.title}</h3>
+            ${i.subtitle ? `<span style="font-size:0.8rem;font-weight:600;color:#2563eb;">${i.subtitle}</span>` : ''}
+            <p class="clean-product-desc" style="margin-top:0.5rem;">${i.description || i.shortDescription || ''}</p>
+          </div>
+          ${this._renderCardButton(i.buttonText, i.buttonAction, i.id, 'Ver Más Información', 'modal:info')}
         </div>
-        ${this._renderCardButton(i.buttonText, i.buttonAction, i.id, 'Ver Más Información', 'modal:info')}
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     return `
       <div class="clean-subpage-container">

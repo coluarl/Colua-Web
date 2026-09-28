@@ -525,6 +525,7 @@ class AdminComponent {
     async renderTabPantallas(container) {
         this.sections = (await coluaRepo.getSections()).filter(s => s.id !== 'sec_comunidad' && s.slug !== 'comunidad' && (s.title || '').trim().toLowerCase() !== 'comunidad');
         const bottomSlots = coluaRepo.getBottomNavSlots();
+        const topNavItems = coluaRepo.getTopNavItemsSync();
 
         const placementLabels = {
             'grid_and_drawer': 'Cuadrícula y Menú Lateral',
@@ -541,12 +542,122 @@ class AdminComponent {
                         Gestor de Pantallas y Sitios en Menús
                     </h2>
                     <p style="font-size: 0.85rem; color: var(--colua-gray-600); margin: 0;">
-                        Configura las 5 posiciones de la barra inferior (con Inicio fijo), cambia lugares, oculta, edita o elimina pantallas.
+                        Configura los botones del menú superior con sub-opciones, los sitios de la barra inferior móvil y las secciones de la cooperativa.
                     </p>
                 </div>
                 <button id="add-new-section-btn" class="btn btn-primary" style="font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
                     ${ADMIN_ICONS.plus} <span>Crear Nueva Sección</span>
                 </button>
+            </div>
+
+            <!-- Módulo Visual de Gestión del Menú Superior y Sub-botones (Desktop Navbar) -->
+            <div class="card" style="padding: 22px; background: white; border-radius: 14px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--colua-navy); margin-bottom: 26px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 3px 0; display: flex; align-items: center; gap: 8px;">
+                            ${ADMIN_ICONS.screens} <span>Botones del Menú Superior y Sub-opciones (Navbar)</span>
+                        </h3>
+                        <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin: 0;">
+                            Crea botones para la barra superior, asigna la pantalla a la que conducen y agrega sub-botones para desplegar subopciones.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button id="reset-top-nav-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; color: var(--colua-navy); border-color: var(--colua-gray-300);" title="Restaura los 12 botones estándar originales de COLUA">
+                            Restablecer Menú Estándar
+                        </button>
+                        <button id="add-top-nav-btn" class="btn btn-primary" style="font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px; background: var(--colua-navy);">
+                            ${ADMIN_ICONS.plus} <span>Crear Botón en Menú</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Botones del Menú Superior -->
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${topNavItems.map((item, idx) => {
+                        const targetSec = this.sections.find(s => s.id === item.targetSectionId || s.slug === item.targetSectionId);
+                        const targetLabel = targetSec ? targetSec.title : (item.targetSectionId || 'Sin pantalla asignada');
+                        const subCount = Array.isArray(item.subItems) ? item.subItems.length : 0;
+
+                        return `
+                            <div class="top-nav-item-row" style="border: 1px solid var(--colua-gray-200); border-radius: 10px; background: #ffffff; overflow: hidden; transition: all 0.15s ease;">
+                                <!-- Fila Principal del Botón -->
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f8fafc; border-bottom: ${subCount > 0 ? '1px solid var(--colua-gray-200)' : 'none'}; flex-wrap: wrap; gap: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-size: 0.76rem; font-weight: 800; background: var(--colua-navy); color: white; padding: 3px 8px; border-radius: 6px;">
+                                            #${idx + 1}
+                                        </span>
+                                        <div>
+                                            <strong style="font-size: 0.95rem; color: var(--colua-navy); display: inline-flex; align-items: center; gap: 6px;">
+                                                ${item.label}
+                                                ${subCount > 0 ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>` : ''}
+                                            </strong>
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 0.78rem; flex-wrap: wrap;">
+                                                <span style="color: var(--colua-gray-600);">Pantalla destino:</span>
+                                                <span style="background: rgba(37, 99, 235, 0.1); color: #2563eb; font-weight: 700; padding: 2px 8px; border-radius: 6px;">
+                                                    ${targetLabel} (${item.targetSectionId || 'menú desplegable'})
+                                                </span>
+                                                <span style="background: ${subCount > 0 ? '#dcfce7' : '#f1f5f9'}; color: ${subCount > 0 ? '#15803d' : '#64748b'}; font-weight: 700; padding: 2px 8px; border-radius: 6px;">
+                                                    ${subCount > 0 ? `${subCount} sub-opción(es)` : 'Sin sub-opciones'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <button class="btn add-sub-nav-btn" data-parent-id="${item.id}" data-parent-title="${item.label}" style="font-size: 0.78rem; padding: 5px 10px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Agregar sub-botón a este menú">
+                                            ${ADMIN_ICONS.plus} <span>+ Sub-botón</span>
+                                        </button>
+                                        <button class="btn edit-top-nav-btn" data-id="${item.id}" style="font-size: 0.78rem; padding: 5px 10px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 600;" title="Editar botón del menú">
+                                            ${ADMIN_ICONS.edit} <span>Editar</span>
+                                        </button>
+                                        <button class="btn move-top-nav-up-btn" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} style="font-size: 0.78rem; padding: 5px 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: ${idx === 0 ? 'not-allowed' : 'pointer'}; opacity: ${idx === 0 ? '0.4' : '1'};" title="Subir orden">
+                                            ▲
+                                        </button>
+                                        <button class="btn move-top-nav-down-btn" data-idx="${idx}" ${idx === topNavItems.length - 1 ? 'disabled' : ''} style="font-size: 0.78rem; padding: 5px 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: ${idx === topNavItems.length - 1 ? 'not-allowed' : 'pointer'}; opacity: ${idx === topNavItems.length - 1 ? '0.4' : '1'};" title="Bajar orden">
+                                            ▼
+                                        </button>
+                                        <button class="btn delete-top-nav-btn" data-id="${item.id}" data-label="${item.label}" style="font-size: 0.78rem; padding: 5px 10px; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 6px; font-weight: 600;" title="Eliminar botón del menú">
+                                            ${ADMIN_ICONS.trash}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Sub-botones anidados (si existen) -->
+                                ${subCount > 0 ? `
+                                    <div style="padding: 10px 16px 12px 36px; background: #ffffff; display: flex; flex-direction: column; gap: 6px;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; color: var(--colua-gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">
+                                            Sub-opciones desplegables de este botón:
+                                        </span>
+                                        ${item.subItems.map(sub => {
+                                            const subSec = this.sections.find(s => s.id === sub.targetSectionId || s.slug === sub.targetSectionId);
+                                            const subSecLabel = subSec ? subSec.title : (sub.targetSectionId || 'Sin pantalla asignada');
+
+                                            return `
+                                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-left: 3.5px solid #2563eb; border-radius: 0 8px 8px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; flex-wrap: wrap; gap: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                                        <span style="color: #2563eb; font-weight: 800; font-size: 0.85rem;">↳</span>
+                                                        <strong style="font-size: 0.88rem; color: #1e293b;">${sub.label}</strong>
+                                                        <span style="font-size: 0.76rem; background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 5px; font-weight: 600;">
+                                                            Pantalla: ${subSecLabel} (${sub.targetSectionId})
+                                                        </span>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <button class="btn edit-sub-nav-btn" data-parent-id="${item.id}" data-sub-id="${sub.id}" data-sub-label="${sub.label}" data-sub-target="${sub.targetSectionId}" style="font-size: 0.74rem; padding: 4px 8px; background: white; border: 1px solid #cbd5e1; border-radius: 5px; color: #334155;">
+                                                            Editar
+                                                        </button>
+                                                        <button class="btn delete-sub-nav-btn" data-parent-id="${item.id}" data-sub-id="${sub.id}" data-sub-label="${sub.label}" style="font-size: 0.74rem; padding: 4px 8px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 5px; color: #be123c;">
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
             </div>
 
             <!-- Módulo Visual de los 5 Sitios de la Barra Inferior (Inicio Fijo + 4 Sitios Intercambiables) -->
@@ -724,6 +835,149 @@ class AdminComponent {
                     });
                 }
             });
+        });
+
+        // Eventos del Gestor de Menú Superior (Navbar y Sub-botones)
+        container.querySelector('#add-top-nav-btn')?.addEventListener('click', () => {
+            this.showTopNavItemModal(null);
+        });
+
+        container.querySelectorAll('.edit-top-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const item = coluaRepo.getTopNavItemsSync().find(n => n.id === id);
+                if (item) this.showTopNavItemModal(item);
+            });
+        });
+
+        container.querySelectorAll('.delete-top-nav-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                const label = btn.dataset.label;
+                const confirm = await Swal.fire({
+                    title: `¿Eliminar "${label}"?`,
+                    text: "Se quitará este botón y sus sub-opciones de la barra de navegación superior.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#e42a67",
+                    cancelButtonColor: "#64748b",
+                    confirmButtonText: "Sí, eliminar",
+                    cancelButtonText: "Cancelar"
+                });
+                if (confirm.isConfirmed) {
+                    await coluaRepo.deleteTopNavItem(id);
+                    window.navbarComponent?.refresh();
+                    Swal.fire({
+                        title: "¡Botón Eliminado!",
+                        text: `El botón "${label}" ha sido eliminado del menú.`,
+                        icon: "success",
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    await this.loadTabContent();
+                }
+            });
+        });
+
+        container.querySelectorAll('.add-sub-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const parentId = btn.dataset.parentId;
+                const parentTitle = btn.dataset.parentTitle;
+                this.showTopNavSubItemModal(parentId, parentTitle, null);
+            });
+        });
+
+        container.querySelectorAll('.edit-sub-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const parentId = btn.dataset.parentId;
+                const subId = btn.dataset.subId;
+                const subLabel = btn.dataset.subLabel;
+                const subTarget = btn.dataset.subTarget;
+                this.showTopNavSubItemModal(parentId, '', { id: subId, label: subLabel, targetSectionId: subTarget });
+            });
+        });
+
+        container.querySelectorAll('.delete-sub-nav-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const parentId = btn.dataset.parentId;
+                const subId = btn.dataset.subId;
+                const subLabel = btn.dataset.subLabel;
+                const confirm = await Swal.fire({
+                    title: `¿Eliminar sub-botón "${subLabel}"?`,
+                    text: "Esta sub-opción se quitará del menú desplegable.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#e42a67",
+                    cancelButtonColor: "#64748b",
+                    confirmButtonText: "Sí, eliminar",
+                    cancelButtonText: "Cancelar"
+                });
+                if (confirm.isConfirmed) {
+                    await coluaRepo.deleteTopNavSubItem(parentId, subId);
+                    window.navbarComponent?.refresh();
+                    Swal.fire({
+                        title: "¡Sub-botón Eliminado!",
+                        icon: "success",
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    await this.loadTabContent();
+                }
+            });
+        });
+
+        container.querySelectorAll('.move-top-nav-up-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.idx);
+                const items = coluaRepo.getTopNavItemsSync();
+                if (idx > 0) {
+                    const temp = items[idx - 1];
+                    items[idx - 1] = items[idx];
+                    items[idx] = temp;
+                    await coluaRepo.reorderTopNavItems(items.map(i => i.id));
+                    window.navbarComponent?.refresh();
+                    await this.loadTabContent();
+                }
+            });
+        });
+
+        container.querySelectorAll('.move-top-nav-down-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.idx);
+                const items = coluaRepo.getTopNavItemsSync();
+                if (idx < items.length - 1) {
+                    const temp = items[idx + 1];
+                    items[idx + 1] = items[idx];
+                    items[idx] = temp;
+                    await coluaRepo.reorderTopNavItems(items.map(i => i.id));
+                    window.navbarComponent?.refresh();
+                    await this.loadTabContent();
+                }
+            });
+        });
+
+        container.querySelector('#reset-top-nav-btn')?.addEventListener('click', async () => {
+            const confirm = await Swal.fire({
+                title: "¿Restablecer Menú Superior?",
+                text: "Se volverán a colocar los 12 botones estándar originales de COLUA.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#173789",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: "Sí, restablecer",
+                cancelButtonText: "Cancelar"
+            });
+            if (confirm.isConfirmed) {
+                await coluaRepo.resetTopNavToDefaults();
+                window.navbarComponent?.refresh();
+                Swal.fire({
+                    title: "¡Menú Restablecido!",
+                    icon: "success",
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                await this.loadTabContent();
+            }
         });
 
         // Eventos de creación, visibilidad, edición y eliminación
@@ -963,6 +1217,203 @@ class AdminComponent {
                 showConfirmButton: false,
                 draggable: true
             });
+            await this.loadTabContent();
+        });
+    }
+
+    showTopNavItemModal(item = null) {
+        const isNew = !item;
+        const currentData = item || {
+            id: 'topnav_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            label: '',
+            targetSectionId: 'sec_home',
+            orderIndex: coluaRepo.getTopNavItemsSync().length + 1,
+            subItems: []
+        };
+
+        const modalHtml = `
+            <div style="padding: 4px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 6px;">
+                    ${isNew ? 'Nuevo Botón en Barra Superior' : `Editar Botón: ${currentData.label}`}
+                </h3>
+                <p style="font-size: 0.84rem; color: var(--colua-gray-600); margin-bottom: 18px;">
+                    Configura el nombre del botón visible en la barra de navegación superior y la pantalla o sección a la que conducirá.
+                </p>
+
+                <form id="top-nav-item-form">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 600; color: var(--colua-gray-700); margin-bottom: 4px;">
+                            Nombre / Texto del Botón *
+                        </label>
+                        <input type="text" id="top-nav-label" value="${currentData.label}" required placeholder="Ej: Ahorros, Créditos, Asistencia..."
+                            style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 600; color: var(--colua-gray-700); margin-bottom: 4px;">
+                            Pantalla / Sección Destino *
+                        </label>
+                        <select id="top-nav-target" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; background: white; color: var(--colua-navy);">
+                            <optgroup label="Secciones de la Cooperativa">
+                                ${this.sections.map(sec => `
+                                    <option value="${sec.id}" ${currentData.targetSectionId === sec.id || currentData.targetSectionId === sec.slug ? 'selected' : ''}>
+                                        ${sec.title} (#${sec.slug || sec.id})
+                                    </option>
+                                `).join('')}
+                            </optgroup>
+                            <optgroup label="Pantallas Especiales del Sistema">
+                                <option value="admin" ${currentData.targetSectionId === 'admin' ? 'selected' : ''}>Portal Administrativo (#admin)</option>
+                                <option value="perfil" ${currentData.targetSectionId === 'perfil' ? 'selected' : ''}>Perfil de Asociado (#perfil)</option>
+                                <option value="" ${!currentData.targetSectionId ? 'selected' : ''}>Sin Pantalla Directa (Solo Desplegable con Sub-opciones)</option>
+                            </optgroup>
+                        </select>
+                        <span style="display: block; font-size: 0.76rem; color: var(--colua-gray-500); margin-top: 4px;">
+                            Al hacer clic en el botón principal, el usuario navegará a esta pantalla seleccionada.
+                        </span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 22px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 600; color: var(--colua-gray-700); margin-bottom: 4px;">
+                            Posición u Orden Numérico
+                        </label>
+                        <input type="number" id="top-nav-order" value="${currentData.orderIndex || 1}" min="1" max="99"
+                            style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 8px 16px;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 18px; background: var(--colua-navy);">
+                            ${isNew ? 'Crear Botón' : 'Guardar Cambios'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        app.showModal(modalHtml);
+
+        const form = document.getElementById('top-nav-item-form');
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const labelVal = document.getElementById('top-nav-label').value.trim();
+            const targetVal = document.getElementById('top-nav-target').value;
+            const orderVal = parseInt(document.getElementById('top-nav-order').value) || 1;
+
+            const itemToSave = {
+                id: currentData.id,
+                label: labelVal,
+                targetSectionId: targetVal,
+                orderIndex: orderVal,
+                subItems: currentData.subItems || []
+            };
+
+            await coluaRepo.saveTopNavItem(itemToSave);
+            window.navbarComponent?.refresh();
+            app.closeModal();
+
+            Swal.fire({
+                title: isNew ? "¡Botón Creado!" : "¡Botón Actualizado!",
+                text: `El botón "${labelVal}" ha sido configurado en el menú superior.`,
+                icon: "success",
+                timer: 1500,
+                showConfirmButton: false,
+                draggable: true
+            });
+
+            await this.loadTabContent();
+        });
+    }
+
+    showTopNavSubItemModal(parentId, parentTitle = '', subItem = null) {
+        const isNew = !subItem;
+        const currentData = subItem || {
+            id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            label: '',
+            targetSectionId: 'sec_home'
+        };
+
+        const modalHtml = `
+            <div style="padding: 4px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 6px;">
+                    ${isNew ? 'Nuevo Sub-botón / Sub-opción' : `Editar Sub-botón: ${currentData.label}`}
+                </h3>
+                <p style="font-size: 0.84rem; color: var(--colua-gray-600); margin-bottom: 18px;">
+                    ${parentTitle ? `Agregando sub-opción desplegable dentro de: <strong>${parentTitle}</strong>` : 'Configura la sub-opción desplegable y la pantalla a la que conduce.'}
+                </p>
+
+                <form id="top-nav-sub-item-form">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 600; color: var(--colua-gray-700); margin-bottom: 4px;">
+                            Nombre / Texto de la Sub-opción *
+                        </label>
+                        <input type="text" id="top-nav-sub-label" value="${currentData.label}" required placeholder="Ej: Ahorro Plazo Fijo, Crédito Vivienda..."
+                            style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 22px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 600; color: var(--colua-gray-700); margin-bottom: 4px;">
+                            Pantalla Asignada *
+                        </label>
+                        <select id="top-nav-sub-target" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; background: white; color: var(--colua-navy);">
+                            <optgroup label="Secciones de la Cooperativa">
+                                ${this.sections.map(sec => `
+                                    <option value="${sec.id}" ${currentData.targetSectionId === sec.id || currentData.targetSectionId === sec.slug ? 'selected' : ''}>
+                                        ${sec.title} (#${sec.slug || sec.id})
+                                    </option>
+                                `).join('')}
+                            </optgroup>
+                            <optgroup label="Otras Pantallas">
+                                <option value="admin" ${currentData.targetSectionId === 'admin' ? 'selected' : ''}>Portal Administrativo (#admin)</option>
+                                <option value="perfil" ${currentData.targetSectionId === 'perfil' ? 'selected' : ''}>Perfil de Asociado (#perfil)</option>
+                            </optgroup>
+                        </select>
+                        <span style="display: block; font-size: 0.76rem; color: var(--colua-gray-500); margin-top: 4px;">
+                            Al seleccionar esta opción en el menú desplegable, el usuario irá directamente a esta pantalla.
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 8px 16px;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 18px; background: #2563eb;">
+                            ${isNew ? 'Guardar Sub-botón' : 'Guardar Cambios'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        app.showModal(modalHtml);
+
+        const form = document.getElementById('top-nav-sub-item-form');
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const labelVal = document.getElementById('top-nav-sub-label').value.trim();
+            const targetVal = document.getElementById('top-nav-sub-target').value;
+
+            const subItemData = {
+                id: currentData.id,
+                label: labelVal,
+                targetSectionId: targetVal
+            };
+
+            if (isNew) {
+                await coluaRepo.addTopNavSubItem(parentId, subItemData);
+            } else {
+                await coluaRepo.updateTopNavSubItem(parentId, subItemData);
+            }
+
+            window.navbarComponent?.refresh();
+            app.closeModal();
+
+            Swal.fire({
+                title: isNew ? "¡Sub-botón Agregado!" : "¡Sub-botón Actualizado!",
+                text: `La sub-opción "${labelVal}" se ha guardado en el menú desplegable.`,
+                icon: "success",
+                timer: 1500,
+                showConfirmButton: false,
+                draggable: true
+            });
+
             await this.loadTabContent();
         });
     }
@@ -1755,26 +2206,33 @@ class AdminComponent {
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; flex-wrap: wrap;">
                                     <!-- Izquierda: Ícono / Cover + Título + Tipo -->
                                     <div style="display: flex; align-items: center; gap: 12px; min-width: 220px; flex: 1;">
-                                        <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(23, 55, 137, 0.06); border: 1px solid rgba(23, 55, 137, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative;">
-                                            ${item.imageUrl && item.imageUrl.trim().length > 5 ? `
+                                        <div style="width: 44px; height: 44px; border-radius: 10px; background: ${item.type === 'pdf_document' ? '#fef2f2' : 'rgba(23, 55, 137, 0.06)'}; border: 1px solid ${item.type === 'pdf_document' ? '#fecaca' : 'rgba(23, 55, 137, 0.12)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative;">
+                                            ${item.type === 'pdf_document' ? `
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                            ` : (item.imageUrl && item.imageUrl.trim().length > 5 ? `
                                                 <img src="${item.imageUrl}" alt="${item.title}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                                                 <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; font-size: 1.25rem;">${item.icon || ADMIN_ICONS.document}</div>
                                             ` : `
                                                 <span style="display: inline-flex; align-items: center; justify-content: center;">${item.icon ? item.icon : ADMIN_ICONS.document}</span>
-                                            `}
+                                            `)}
                                         </div>
                                         <div>
                                             <h4 style="font-size: 1.08rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 3px 0; line-height: 1.2;">
                                                 ${item.title}
                                             </h4>
-                                            <span style="font-size: 0.72rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.3px; text-transform: uppercase;">
-                                                ${item.type || 'Tarjeta'}
+                                            <span style="font-size: 0.72rem; font-weight: 700; color: ${item.type === 'pdf_document' ? '#dc2626' : '#475569'}; background: ${item.type === 'pdf_document' ? '#fee2e2' : '#f1f5f9'}; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.3px; text-transform: uppercase;">
+                                                ${item.type === 'pdf_document' ? '📄 DOCUMENTO PDF' : (item.type || 'Tarjeta')}
                                             </span>
                                         </div>
                                     </div>
 
                                     <!-- Derecha: Toolbar de Botones (Siempre alineados en una sola fila compacta) -->
                                     <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap;">
+                                        ${item.type === 'pdf_document' ? `
+                                            <button class="btn btn-outline open-pdf-canvas-btn" data-url="${item.pdfUrl || ''}" data-title="${item.title}" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700; border-color: #dc2626; color: #dc2626; background: #fff5f5; display: inline-flex; align-items: center; gap: 4px;" title="Abrir PDF en nueva pestaña">
+                                                <span>Ver PDF ↗</span>
+                                            </button>
+                                        ` : ''}
                                         <button class="btn btn-outline toggle-item-visibility-btn" data-id="${item.id}" style="padding: 6px 11px; font-size: 0.8rem; font-weight: 600; color: ${item.isEnabled !== false && item.isVisible !== false ? '#15803d' : '#b91c1c'}; border-color: ${item.isEnabled !== false && item.isVisible !== false ? '#bbf7d0' : '#fecaca'}; background: ${item.isEnabled !== false && item.isVisible !== false ? '#f0fdf4' : '#fef2f2'}; display: inline-flex; align-items: center; gap: 5px;" title="${item.isEnabled !== false && item.isVisible !== false ? 'Ocultar elemento' : 'Mostrar elemento'}">
                                             ${item.isEnabled !== false && item.isVisible !== false ? ADMIN_ICONS.eye : ADMIN_ICONS.eyeOff}
                                             <span>${item.isEnabled !== false && item.isVisible !== false ? 'Visible' : 'Oculto'}</span>
@@ -1925,6 +2383,15 @@ class AdminComponent {
             });
         });
 
+        container.querySelectorAll('.open-pdf-canvas-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = btn.dataset.url;
+                const title = btn.dataset.title;
+                window.openPdfDocument(url, title);
+            });
+        });
+
         container.querySelectorAll('.edit-item-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const item = this.selectedContentItems.find(i => i.id === btn.dataset.id);
@@ -2061,6 +2528,16 @@ class AdminComponent {
                 iconBg: '#faf5ff',
                 iconColor: '#9333ea',
                 iconSvg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`
+            },
+            {
+                id: 'pdf_document',
+                title: 'Documento PDF',
+                badge: 'PDF',
+                subtitle: 'Reglamentos, Formularios, Memorias, Estados Financieros',
+                category: 'media',
+                iconBg: '#fef2f2',
+                iconColor: '#dc2626',
+                iconSvg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`
             },
             {
                 id: 'form_lead',
@@ -2205,13 +2682,16 @@ class AdminComponent {
             id: 'item_' + Date.now(),
             sectionId: this.selectedSectionId,
             type: activeType,
-            title: activeType === 'form_lead' ? 'Formulario de Consultas y Solicitud' : (activeType === 'image' ? 'Imagen Institucional' : (activeType === 'text' ? 'Título o Mensaje Informativo' : (activeType === 'button' ? 'Botón de Acción' : ''))),
-            subtitle: activeType === 'form_lead' ? 'Envía tus datos o preguntas directamente a la administración' : '',
-            description: activeType === 'form_lead' ? 'Completa los campos para que un asesor o administrador atienda tu solicitud a la brevedad.' : '',
+            title: activeType === 'pdf_document' ? 'Documento Oficial en PDF' : (activeType === 'form_lead' ? 'Formulario de Consultas y Solicitud' : (activeType === 'image' ? 'Imagen Institucional' : (activeType === 'text' ? 'Título o Mensaje Informativo' : (activeType === 'button' ? 'Botón de Acción' : '')))),
+            subtitle: activeType === 'pdf_document' ? 'Formato Digital Oficial' : (activeType === 'form_lead' ? 'Envía tus datos o preguntas directamente a la administración' : ''),
+            description: activeType === 'pdf_document' ? 'Haz clic para abrir y visualizar el documento oficial en una nueva pestaña del navegador.' : (activeType === 'form_lead' ? 'Completa los campos para que un asesor o administrador atienda tu solicitud a la brevedad.' : ''),
             imageUrl: activeType === 'image' ? 'assets/colua_edificio.png' : (activeType === 'form_lead' ? 'assets/distintivo_colua.png' : ''),
             icon: '',
-            buttonText: activeType === 'form_lead' ? 'Enviar Respuestas al Admin' : (activeType === 'button' ? 'Contactar con Asesor' : ''),
-            buttonAction: activeType === 'form_lead' ? 'form:form_asociate' : (activeType === 'button' ? 'tel:77957795' : ''),
+            pdfUrl: item?.pdfUrl || '',
+            fileName: item?.fileName || '',
+            fileSize: item?.fileSize || 0,
+            buttonText: activeType === 'pdf_document' ? 'Ver Documento PDF' : (activeType === 'form_lead' ? 'Enviar Respuestas al Admin' : (activeType === 'button' ? 'Contactar con Asesor' : '')),
+            buttonAction: activeType === 'pdf_document' ? ('pdf:' + (item?.pdfUrl || '')) : (activeType === 'form_lead' ? 'form:form_asociate' : (activeType === 'button' ? 'tel:77957795' : '')),
             leadWhatsapp: '50277957795',
             formQuestions: defaultQuestions,
             benefitItems: ['DPI vigente', 'Recibo de luz o agua reciente', 'Aportación mínima de Q50.00'],
@@ -2227,6 +2707,7 @@ class AdminComponent {
         }
 
         const typeLabels = {
+            'pdf_document': 'Documento PDF (Descargable / Visor)',
             'form_lead': 'Formulario / Consultas & Preguntas',
             'image': 'Elemento de Imagen',
             'text': 'Bloque de Texto',
@@ -2239,11 +2720,118 @@ class AdminComponent {
         };
 
         const activeTypeName = typeLabels[activeType] || 'Elemento';
+        this._currentEditingData = currentData;
+        this._currentEditingType = activeType;
+        this._typeLabels = typeLabels;
 
         // Renderizado especializado por tipo de elemento
         let typeSpecificHtml = '';
 
-        if (activeType === 'form_lead') {
+        if (activeType === 'pdf_document') {
+            // === 0. EDITOR ESPECIALIZADO: DOCUMENTO PDF (VISUALIZACIÓN Y ALMACENAMIENTO) ===
+            const allAvailableSections = (this.allSectionsList || this.sections || []).filter(s => s.id !== 'sec_comunidad');
+            const currentSecId = currentData.sectionId || this.selectedSectionId || 'sec_home';
+            const hasPdf = currentData.pdfUrl && currentData.pdfUrl.trim().length > 0;
+
+            typeSpecificHtml = `
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 4px;">
+                        Título del Documento PDF *
+                    </label>
+                    <input type="text" id="item-title" value="${currentData.title || ''}" required placeholder="Ej: Reglamento Oficial de Ahorro y Crédito / Memoria de Labores" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Pantalla / Sección donde se mostrará el PDF:</label>
+                    <select id="item-section-target" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; background: white; font-weight: 600; color: var(--colua-navy);">
+                        <option value="sec_home" ${currentSecId === 'sec_home' ? 'selected' : ''}>🏠 Inicio (Página Principal)</option>
+                        <option value="sec_ahorros" ${currentSecId === 'sec_ahorros' ? 'selected' : ''}>💰 Ahorros & Cuentas</option>
+                        <option value="sec_creditos" ${currentSecId === 'sec_creditos' ? 'selected' : ''}>💳 Créditos & Préstamos</option>
+                        <option value="sec_seguros" ${currentSecId === 'sec_seguros' ? 'selected' : ''}>🛡️ Seguros & Protección</option>
+                        <option value="sec_remesas" ${currentSecId === 'sec_remesas' ? 'selected' : ''}>🌎 Remesas Familiares</option>
+                        <option value="sec_servicios" ${currentSecId === 'sec_servicios' ? 'selected' : ''}>📱 Servicios Digitales</option>
+                        <option value="sec_beneficios" ${currentSecId === 'sec_beneficios' ? 'selected' : ''}>👑 Tus 6 Beneficios</option>
+                        <option value="sec_noticias" ${currentSecId === 'sec_noticias' ? 'selected' : ''}>📰 Noticias & Novedades</option>
+                        <option value="sec_sostenibilidad" ${currentSecId === 'sec_sostenibilidad' ? 'selected' : ''}>🌱 Sostenibilidad Cooperativa</option>
+                        <option value="sec_nosotros" ${currentSecId === 'sec_nosotros' ? 'selected' : ''}>🏛️ Nosotros & Identidad</option>
+                        ${allAvailableSections.filter(s => !['sec_home','sec_ahorros','sec_creditos','sec_seguros','sec_remesas','sec_servicios','sec_beneficios','sec_noticias','sec_sostenibilidad','sec_nosotros'].includes(s.id)).map(s => `
+                            <option value="${s.id}" ${currentSecId === s.id ? 'selected' : ''}>📁 ${s.title || s.id}</option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">
+                        Descripción o Resumen del Documento
+                    </label>
+                    <textarea id="item-desc" rows="2" placeholder="Ej: Documento de normativa cooperativa aprobado en Asamblea. Contiene bases de tasas y plazos." style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem;">${currentData.description || ''}</textarea>
+                </div>
+
+                <!-- ZONA DE CARGA DE ARCHIVO PDF -->
+                <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 0.88rem; font-weight: 800; color: #991b1b; display: flex; align-items: center; gap: 8px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span>Archivo PDF (Almacenamiento del Sistema) *</span>
+                        </label>
+                        <span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 0.72rem; font-weight: 700;">FORMATO .PDF</span>
+                    </div>
+
+                    <p style="font-size: 0.8rem; color: #7f1d1d; margin: 0 0 12px 0; line-height: 1.45;">
+                        Sube un archivo PDF desde tu equipo. Se guardará de forma segura en el almacenamiento del sistema para que cuando cualquier usuario haga clic, se <strong>abra en una nueva pestaña del navegador</strong> para visualizarlo o imprimirlo.
+                    </p>
+
+                    <!-- Zona interactiva táctil y Dropzone nativa para examinar archivo -->
+                    <div id="pdf-drop-zone" style="position: relative; border: 2px dashed #f87171; border-radius: 10px; background: #ffffff; padding: 18px 14px; text-align: center; margin-bottom: 12px; transition: all 0.2s ease; cursor: pointer;">
+                        <input type="file" id="pdf-file-upload-input" accept="application/pdf,.pdf" style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10;" title="Haz clic para examinar archivos en tu equipo o arrastra un PDF aquí" />
+                        
+                        <div style="pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                            <div style="width: 44px; height: 44px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center; color: #dc2626; box-shadow: 0 2px 6px rgba(220,38,38,0.12);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            </div>
+                            <span style="font-size: 0.92rem; font-weight: 800; color: #991b1b;">
+                                📁 Haz clic aquí para examinar en tu equipo
+                            </span>
+                            <span style="font-size: 0.76rem; color: #7f1d1d; font-weight: 500;">
+                                O arrastra y suelta tu archivo PDF en este recuadro
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                        <label for="pdf-file-upload-input" class="btn btn-primary" style="background: #dc2626; border-color: #dc2626; font-size: 0.85rem; padding: 9px 18px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; color: white; border-radius: 8px; margin: 0; box-shadow: 0 2px 6px rgba(220,38,38,0.25);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            <span>Subir PDF desde tu Equipo</span>
+                        </label>
+                        <button type="button" id="btn-test-preview-pdf" class="btn btn-outline" style="font-size: 0.84rem; padding: 8px 14px; border-color: #dc2626; color: #dc2626; font-weight: 700; display: ${hasPdf ? 'inline-flex' : 'none'}; align-items: center; gap: 6px; border-radius: 8px; background: white;">
+                            <span>👁️ Probar Ver PDF (Nueva Pestaña)</span>
+                        </button>
+                    </div>
+
+                    <div id="pdf-upload-status-box" style="font-size: 0.82rem; color: #b91c1c; font-weight: 600; min-height: 20px; display: flex; align-items: center; gap: 6px;">
+                        ${hasPdf ? `✓ Archivo cargado (${currentData.fileName || 'documento.pdf'}) listo para abrir.` : 'Ningún PDF seleccionado aún.'}
+                    </div>
+
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; font-size: 0.76rem; font-weight: 700; color: #7f1d1d; margin-bottom: 4px;">Ruta / Enlace URL del PDF (Generado automáticamente al subir o ingresado manual):</label>
+                        <input type="text" id="item-pdf-url" value="${currentData.pdfUrl || ''}" placeholder="https://... o data:application/pdf;base64,..." style="width: 100%; padding: 7px 10px; border: 1.5px solid #fca5a5; border-radius: 6px; font-size: 0.8rem; font-family: monospace; background: white;" />
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1.5px solid var(--colua-gray-200); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Texto del Botón para el Usuario</label>
+                            <input type="text" id="item-btn-text" value="${currentData.buttonText || 'Ver Documento PDF'}" placeholder="Ej: Ver Documento PDF / Descargar" style="width: 100%; padding: 8px 10px; border: 1.5px solid var(--colua-gray-200); border-radius: 8px; font-size: 0.85rem;" />
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Subtítulo / Etiqueta Adicional</label>
+                            <input type="text" id="item-subtitle" value="${currentData.subtitle || 'Formato Digital Oficial'}" placeholder="Ej: Actualizado 2026 • 2.5 MB" style="width: 100%; padding: 8px 10px; border: 1.5px solid var(--colua-gray-200); border-radius: 8px; font-size: 0.85rem;" />
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (activeType === 'form_lead') {
             // === 1. EDITOR ESPECIALIZADO: FORMULARIO Y PREGUNTAS ===
             const allAvailableSections = (this.allSectionsList || []).filter(s => s.id !== 'sec_comunidad');
             const currentSecId = currentData.sectionId || this.selectedSectionId || 'sec_home';
@@ -2545,7 +3133,7 @@ class AdminComponent {
 
                     <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--colua-gray-200); padding-top: 14px;">
                         <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 9px 16px;">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" style="padding: 9px 24px; font-weight: 700; background: var(--colua-navy);">Guardar ${activeTypeName}</button>
+                        <button type="button" id="btn-save-item-modal" onclick="window.adminComponent.saveCurrentItemModal(event)" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; background: var(--colua-navy); cursor: pointer; border-radius: 8px;">Guardar ${activeTypeName}</button>
                     </div>
                 </form>
             </div>
@@ -2712,38 +3300,350 @@ class AdminComponent {
             });
         }
 
-        // SUBMIT DEL FORMULARIO DE EDICIÓN
-        document.getElementById('item-edit-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Eventos para Documento PDF (Subida y Prueba en Nueva Pestaña)
+        const pdfFileInput = document.getElementById('pdf-file-upload-input');
+        const pdfUrlInput = document.getElementById('item-pdf-url');
+        const pdfStatusBox = document.getElementById('pdf-upload-status-box');
+        const btnTestPreviewPdf = document.getElementById('btn-test-preview-pdf');
+        const dropZone = document.getElementById('pdf-drop-zone');
+
+        const handlePdfFile = async (file) => {
+            if (!file) return;
+            console.log('[COLUA PDF] Archivo seleccionado para procesar:', file.name, file.size);
+            if (pdfStatusBox) {
+                pdfStatusBox.innerHTML = '<span style="color:#d97706;">⏳ Subiendo y guardando documento PDF en el sistema...</span>';
+            }
+            try {
+                let uploader = window.supabaseStorageManager;
+                if (!uploader && typeof SupabaseStorageManager !== 'undefined') {
+                    window.supabaseStorageManager = new SupabaseStorageManager();
+                    uploader = window.supabaseStorageManager;
+                }
+
+                let res = null;
+                if (uploader && uploader.uploadPdf) {
+                    res = await uploader.uploadPdf(file, (msg) => {
+                        if (pdfStatusBox) pdfStatusBox.textContent = msg;
+                    });
+                } else if (window.ColuaPdfStore) {
+                    const docKey = 'doc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+                    await window.ColuaPdfStore.savePdf(docKey, file, file.name);
+                    res = {
+                        success: true,
+                        url: 'indexeddb:' + docKey,
+                        fileName: file.name,
+                        fileSize: file.size
+                    };
+                } else {
+                    throw new Error('No se pudo inicializar el almacenamiento.');
+                }
+
+                if (res && res.success) {
+                    currentData.pdfUrl = res.url;
+                    currentData.fileName = res.fileName || file.name;
+                    currentData.fileSize = res.fileSize || file.size;
+
+                    if (pdfUrlInput) pdfUrlInput.value = res.url;
+                    if (pdfStatusBox) {
+                        const sizeMb = (res.fileSize / (1024 * 1024)).toFixed(2);
+                        pdfStatusBox.innerHTML = `✓ <strong style="color:#15803d;">${res.fileName}</strong> (${sizeMb} MB) guardado en el sistema con éxito.`;
+                    }
+                    if (btnTestPreviewPdf) {
+                        btnTestPreviewPdf.style.display = 'inline-flex';
+                    }
+                    const titleInput = document.getElementById('item-title');
+                    if (titleInput && (!titleInput.value || titleInput.value === 'Documento Oficial en PDF')) {
+                        titleInput.value = file.name.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    }
+                } else {
+                    if (pdfStatusBox) pdfStatusBox.innerHTML = `❌ Error: ${res?.error || 'No se pudo subir el archivo'}`;
+                }
+            } catch(err) {
+                console.error('[COLUA PDF] Error al procesar PDF:', err);
+                if (pdfStatusBox) pdfStatusBox.innerHTML = `❌ Error: ${err.message || 'Error inesperado'}`;
+            }
+        };
+
+        if (dropZone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.borderColor = '#dc2626';
+                    dropZone.style.background = '#fef2f2';
+                });
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.borderColor = '#f87171';
+                    dropZone.style.background = '#ffffff';
+                });
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt?.files;
+                if (files && files.length > 0) {
+                    handlePdfFile(files[0]);
+                }
+            });
+        }
+
+        if (pdfFileInput) {
+            pdfFileInput.addEventListener('change', (e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePdfFile(file);
+            });
+        }
+
+        if (btnTestPreviewPdf) {
+            btnTestPreviewPdf.addEventListener('click', () => {
+                const url = pdfUrlInput?.value || currentData.pdfUrl;
+                const title = document.getElementById('item-title')?.value || 'Documento COLUA';
+                window.openPdfDocument(url, title);
+            });
+        }
+
+        // SUBMIT DEL FORMULARIO DE EDICIÓN (Robusto con manejo de cuota y try/catch)
+        const formElem = document.getElementById('item-edit-form');
+        const saveBtn = document.getElementById('btn-save-item-modal');
+
+        const executeSaveItem = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '⏳ Guardando...';
+            }
+
+            try {
+                const isEnabledVal = document.getElementById('item-enabled')?.checked ?? true;
+                const isDraftVal = document.getElementById('item-is-draft')?.checked ?? false;
+
+                let updatedTitle = document.getElementById('item-title')?.value?.trim();
+                if (!updatedTitle) {
+                    updatedTitle = activeTypeName;
+                }
+                let updatedSubtitle = document.getElementById('item-subtitle')?.value?.trim() || '';
+                let updatedDesc = document.getElementById('item-desc')?.value?.trim() || '';
+                let updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || '';
+                let updatedBtnAction = document.getElementById('item-btn-action')?.value?.trim() || '';
+                let updatedImg = imgUrlInput?.value?.trim() || currentData.imageUrl || '';
+                let updatedLeadWhatsapp = document.getElementById('item-lead-whatsapp')?.value?.trim() || currentData.leadWhatsapp || '50277957795';
+
+                let targetSecVal = this.selectedSectionId;
+                let formReqsArray = [];
+                let formWebhookUrl = '';
+
+                if (activeType === 'pdf_document') {
+                    targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId;
+                    let pdfUrlVal = pdfUrlInput?.value?.trim() || currentData.pdfUrl || '';
+                    
+                    // Si el PDF viene en Data URI Base64 grande (ej. 18MB), mover a IndexedDB para evitar exceder cuota de localStorage
+                    if (pdfUrlVal && pdfUrlVal.startsWith('data:application/pdf') && pdfUrlVal.length > 100000) {
+                        try {
+                            const docKey = 'doc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+                            const base64Data = pdfUrlVal.includes(',') ? pdfUrlVal.split(',')[1] : pdfUrlVal;
+                            const binaryString = atob(base64Data);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                            const blob = new Blob([bytes], { type: 'application/pdf' });
+                            if (window.ColuaPdfStore) {
+                                await window.ColuaPdfStore.savePdf(docKey, blob, currentData.fileName || 'documento.pdf');
+                                pdfUrlVal = 'indexeddb:' + docKey;
+                                currentData.pdfUrl = pdfUrlVal;
+                                if (pdfUrlInput) pdfUrlInput.value = pdfUrlVal;
+                                console.log('[COLUA ADMIN] PDF Base64 grande migrado a IndexedDB:', pdfUrlVal);
+                            }
+                        } catch (errConv) {
+                            console.warn('[COLUA ADMIN] Error al migrar Base64 a IndexedDB:', errConv);
+                        }
+                    }
+
+                    updatedBtnAction = 'pdf:' + pdfUrlVal;
+                    updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || 'Ver Documento PDF';
+                } else if (activeType === 'form_lead') {
+                    updatedBtnAction = 'form:' + currentData.id;
+                    targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId;
+                    const rawReqs = document.getElementById('item-form-requirements')?.value?.trim() || '';
+                    formReqsArray = rawReqs ? rawReqs.split('\n').map(r => r.trim()).filter(Boolean) : [];
+                    formWebhookUrl = document.getElementById('item-form-webhook')?.value?.trim() || '';
+                }
+
+                let benefitItems = currentData.benefitItems || [];
+                if (activeType === 'benefit_list') {
+                    const rawItems = document.getElementById('item-benefit-items')?.value?.trim() || '';
+                    benefitItems = rawItems ? rawItems.split('\n').map(i => i.trim()).filter(Boolean) : [];
+                    updatedSubtitle = benefitItems.join(', ');
+                }
+
+                const updated = {
+                    ...currentData,
+                    sectionId: targetSecVal,
+                    type: activeType,
+                    title: updatedTitle,
+                    subtitle: updatedSubtitle,
+                    description: updatedDesc,
+                    buttonText: updatedBtnText,
+                    buttonAction: updatedBtnAction,
+                    targetSectionId: updatedBtnAction,
+                    imageUrl: updatedImg,
+                    pdfUrl: activeType === 'pdf_document' ? (pdfUrlInput?.value?.trim() || currentData.pdfUrl || '') : (currentData.pdfUrl || ''),
+                    fileName: currentData.fileName || '',
+                    fileSize: currentData.fileSize || 0,
+                    leadWhatsapp: updatedLeadWhatsapp,
+                    webhookUrl: formWebhookUrl,
+                    requirements: formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || []),
+                    formQuestions: activeType === 'form_lead' ? dynamicQuestions : (currentData.formQuestions || []),
+                    benefitItems: benefitItems,
+                    textHierarchy: document.getElementById('item-text-hierarchy')?.value || currentData.textHierarchy || 'h2',
+                    textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
+                    isEnabled: isEnabledVal,
+                    isVisible: isEnabledVal,
+                    isDraft: isDraftVal,
+                    isPublished: !isDraftVal,
+                    lastModified: Date.now()
+                };
+
+                await coluaRepo.saveContentItem(updated);
+
+                // Si es un formulario, guardarlo también en la colección forms de coluaRepo
+                if (activeType === 'form_lead') {
+                    const formToSave = {
+                        id: currentData.id,
+                        title: updatedTitle,
+                        subtitle: updatedSubtitle || updatedDesc,
+                        buttonText: updatedBtnText || 'Enviar Respuestas',
+                        leadWhatsapp: updatedLeadWhatsapp,
+                        webhookUrl: formWebhookUrl,
+                        targetSectionId: targetSecVal,
+                        fields: dynamicQuestions.map(q => ({
+                            id: q.id || 'field_' + Math.random().toString(36).substring(2, 7),
+                            label: q.question || q.label || 'Campo',
+                            type: q.type || 'text',
+                            required: q.required !== false,
+                            placeholder: q.placeholder || '',
+                            options: q.options || []
+                        })),
+                        requirements: formReqsArray
+                    };
+                    await coluaRepo.saveForm(formToSave);
+                }
+
+                app.closeModal();
+
+                if (window.Swal) {
+                    Swal.fire({
+                        title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
+                        text: `"${updated.title}" ha sido guardado exitosamente.`,
+                        icon: "success",
+                        timer: 1600,
+                        showConfirmButton: false,
+                        draggable: true
+                    });
+                } else {
+                    app.showToast(`${activeTypeName} guardado con éxito`, 'success');
+                }
+                await this.loadTabContent();
+            } catch (err) {
+                console.error('[COLUA ADMIN] Error al guardar elemento:', err);
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = `Guardar ${activeTypeName}`;
+                }
+                if (window.Swal) {
+                    Swal.fire({
+                        title: 'Error al Guardar',
+                        text: err.message || 'Ocurrió un error inesperado al guardar.',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Error al guardar: ' + err.message);
+                }
+            }
+        };
+
+        if (formElem) {
+            formElem.addEventListener('submit', executeSaveItem);
+        }
+        if (saveBtn) {
+            saveBtn.addEventListener('click', (e) => {
+                // Si el botón no disparó el submit nativo del formulario
+                if (formElem && formElem.checkValidity && !formElem.checkValidity()) {
+                    formElem.reportValidity();
+                    return;
+                }
+                this.saveCurrentItemModal(e);
+            });
+        }
+    }
+
+    async saveCurrentItemModal(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        console.log('[COLUA ADMIN] saveCurrentItemModal disparado por click');
+
+        const saveBtn = document.getElementById('btn-save-item-modal');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '⏳ Guardando...';
+        }
+
+        try {
+            const currentData = this._currentEditingData || {};
+            const activeType = this._currentEditingType || currentData.type || 'pdf_document';
+            const activeTypeName = (this._typeLabels && this._typeLabels[activeType]) || 'Elemento';
+
+            let updatedTitle = document.getElementById('item-title')?.value?.trim();
+            if (!updatedTitle) {
+                updatedTitle = activeType === 'pdf_document' ? 'Documento Oficial en PDF' : 'Elemento COLUA';
+            }
 
             const isEnabledVal = document.getElementById('item-enabled')?.checked ?? true;
             const isDraftVal = document.getElementById('item-is-draft')?.checked ?? false;
 
-            let updatedTitle = document.getElementById('item-title')?.value?.trim() || activeTypeName;
             let updatedSubtitle = document.getElementById('item-subtitle')?.value?.trim() || '';
             let updatedDesc = document.getElementById('item-desc')?.value?.trim() || '';
             let updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || '';
             let updatedBtnAction = document.getElementById('item-btn-action')?.value?.trim() || '';
-            let updatedImg = imgUrlInput?.value?.trim() || currentData.imageUrl || '';
+            let updatedImg = document.getElementById('item-img-url')?.value?.trim() || currentData.imageUrl || '';
             let updatedLeadWhatsapp = document.getElementById('item-lead-whatsapp')?.value?.trim() || currentData.leadWhatsapp || '50277957795';
 
-            let targetSecVal = this.selectedSectionId;
+            let targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId || currentData.sectionId || 'sec_home';
             let formReqsArray = [];
             let formWebhookUrl = '';
 
-            if (activeType === 'form_lead') {
-                updatedBtnAction = 'form:' + currentData.id;
-                targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId;
-                const rawReqs = document.getElementById('item-form-requirements')?.value?.trim() || '';
-                formReqsArray = rawReqs ? rawReqs.split('\n').map(r => r.trim()).filter(Boolean) : [];
-                formWebhookUrl = document.getElementById('item-form-webhook')?.value?.trim() || '';
-            }
+            if (activeType === 'pdf_document') {
+                targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId || 'sec_home';
+                let pdfUrlVal = document.getElementById('item-pdf-url')?.value?.trim() || currentData.pdfUrl || '';
 
-            let benefitItems = currentData.benefitItems || [];
-            if (activeType === 'benefit_list') {
-                const rawItems = document.getElementById('item-benefit-items')?.value?.trim() || '';
-                benefitItems = rawItems ? rawItems.split('\n').map(i => i.trim()).filter(Boolean) : [];
-                updatedSubtitle = benefitItems.join(', ');
+                // Si viene como Data URI Base64 grande (ej. 18MB de memoria de labores), migrar de inmediato a IndexedDB
+                if (pdfUrlVal && pdfUrlVal.startsWith('data:application/pdf') && pdfUrlVal.length > 50000) {
+                    try {
+                        const docKey = 'doc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+                        const base64Data = pdfUrlVal.includes(',') ? pdfUrlVal.split(',')[1] : pdfUrlVal;
+                        const binaryString = atob(base64Data);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                        const blob = new Blob([bytes], { type: 'application/pdf' });
+                        if (window.ColuaPdfStore) {
+                            await window.ColuaPdfStore.savePdf(docKey, blob, currentData.fileName || 'documento.pdf');
+                            pdfUrlVal = 'indexeddb:' + docKey;
+                            currentData.pdfUrl = pdfUrlVal;
+                            const pdfInput = document.getElementById('item-pdf-url');
+                            if (pdfInput) pdfInput.value = pdfUrlVal;
+                            console.log('[COLUA ADMIN] PDF Base64 migrado a IndexedDB:', pdfUrlVal);
+                        }
+                    } catch (errConv) {
+                        console.warn('[COLUA ADMIN] Fallo en migración a IndexedDB:', errConv);
+                    }
+                }
+
+                updatedBtnAction = 'pdf:' + pdfUrlVal;
+                updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || 'Ver Documento PDF';
             }
 
             const updated = {
@@ -2757,11 +3657,14 @@ class AdminComponent {
                 buttonAction: updatedBtnAction,
                 targetSectionId: updatedBtnAction,
                 imageUrl: updatedImg,
+                pdfUrl: activeType === 'pdf_document' ? (document.getElementById('item-pdf-url')?.value?.trim() || currentData.pdfUrl || '') : (currentData.pdfUrl || ''),
+                fileName: currentData.fileName || '',
+                fileSize: currentData.fileSize || 0,
                 leadWhatsapp: updatedLeadWhatsapp,
                 webhookUrl: formWebhookUrl,
                 requirements: formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || []),
-                formQuestions: activeType === 'form_lead' ? dynamicQuestions : (currentData.formQuestions || []),
-                benefitItems: benefitItems,
+                formQuestions: currentData.formQuestions || [],
+                benefitItems: currentData.benefitItems || [],
                 textHierarchy: document.getElementById('item-text-hierarchy')?.value || currentData.textHierarchy || 'h2',
                 textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
                 isEnabled: isEnabledVal,
@@ -2771,47 +3674,49 @@ class AdminComponent {
                 lastModified: Date.now()
             };
 
-            await coluaRepo.saveContentItem(updated);
-
-            // Si es un formulario, guardarlo también en la colección forms de coluaRepo
-            if (activeType === 'form_lead') {
-                const formToSave = {
-                    id: currentData.id,
-                    title: updatedTitle,
-                    subtitle: updatedSubtitle || updatedDesc,
-                    buttonText: updatedBtnText || 'Enviar Respuestas',
-                    leadWhatsapp: updatedLeadWhatsapp,
-                    webhookUrl: formWebhookUrl,
-                    targetSectionId: targetSecVal,
-                    fields: dynamicQuestions.map(q => ({
-                        id: q.id || 'field_' + Math.random().toString(36).substring(2, 7),
-                        label: q.question || q.label || 'Campo',
-                        type: q.type || 'text',
-                        required: q.required !== false,
-                        placeholder: q.placeholder || '',
-                        options: q.options || []
-                    })),
-                    requirements: formReqsArray
-                };
-                await coluaRepo.saveForm(formToSave);
+            // Asegurarnos de que el pdfUrl en updated use la versión protegida (no Base64 gigante)
+            if (activeType === 'pdf_document' && updatedBtnAction.startsWith('pdf:indexeddb:')) {
+                updated.pdfUrl = updatedBtnAction.replace('pdf:', '');
             }
 
-            app.closeModal();
+            console.log('[COLUA ADMIN] Guardando item:', updated);
+            await window.coluaRepo.saveContentItem(updated);
+            console.log('[COLUA ADMIN] Guardado con éxito.');
+
+            if (window.app && window.app.closeModal) {
+                window.app.closeModal();
+            }
 
             if (window.Swal) {
                 Swal.fire({
                     title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
                     text: `"${updated.title}" ha sido guardado exitosamente.`,
                     icon: "success",
-                    timer: 1600,
-                    showConfirmButton: false,
-                    draggable: true
+                    timer: 1800,
+                    showConfirmButton: false
                 });
             } else {
-                app.showToast(`${activeTypeName} guardado con éxito`, 'success');
+                alert(`¡${updated.title} guardado con éxito!`);
             }
+
             await this.loadTabContent();
-        });
+
+        } catch (err) {
+            console.error('[COLUA ADMIN] Error al guardar:', err);
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = 'Guardar Documento PDF';
+            }
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Error al Guardar',
+                    text: err.message || 'Ocurrió un error inesperado al guardar.',
+                    icon: 'error'
+                });
+            } else {
+                alert('Error al guardar: ' + err.message);
+            }
+        }
     }
 
     async showBlocksEditorModal(itemId) {
