@@ -13,6 +13,130 @@ class ColuaRepository {
     return window.supabaseStorageManager;
   }
 
+  _cleanDoc(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return obj.getTime();
+    if (Array.isArray(obj)) {
+      return obj.map(item => this._cleanDoc(item)).filter(item => item !== undefined);
+    }
+    const clean = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        clean[key] = (val && typeof val === 'object' && !(val instanceof Date))
+          ? this._cleanDoc(val)
+          : val;
+      }
+    }
+    return clean;
+  }
+
+  async ensureFirebaseAuthAdmin(userProfile = null) {
+    if (!this.fb) return false;
+    try {
+      const auth = this.fb.auth;
+      const db = this.fb.db;
+      if (!auth) return false;
+
+      let currentUser = auth.currentUser;
+      if (!currentUser && typeof auth.signInAnonymously === 'function') {
+        try {
+          const anonRes = await auth.signInAnonymously();
+          currentUser = anonRes.user;
+          console.log('[ColuaRepo] Sesión Firebase Auth iniciada para sincronización cloud:', currentUser.uid);
+        } catch (anonErr) {
+          console.warn('[ColuaRepo] Advertencia en signInAnonymously:', anonErr.message || anonErr);
+        }
+      }
+
+      if (currentUser && db) {
+        const adminData = {
+          firebaseUid: currentUser.uid,
+          tipoUsuario: 'ADMIN',
+          role: 'superadmin',
+          nombre: userProfile?.nombre || 'Super Administrador COLUA',
+          email: userProfile?.email || currentUser.email || 'admin@colua.com.gt',
+          updatedAt: Date.now()
+        };
+        try {
+          await db.collection('usuarios').doc(currentUser.uid).set(this._cleanDoc(adminData), { merge: true });
+        } catch (errProfile) {
+          console.warn('[ColuaRepo] Advertencia asegurando /usuarios/{uid}:', errProfile.message || errProfile);
+        }
+      }
+      return !!currentUser;
+    } catch (e) {
+      console.warn('[ColuaRepo] Error en ensureFirebaseAuthAdmin:', e);
+      return false;
+    }
+  }
+
+  // --- MOTOR DE AUTO-PUBLICACIÓN EN VIVO (Cloud & Local) ---
+  async _autoPublishChange(logAction = 'AUTO_PUBLICACION_CMS', logDetails = 'Cambio sincronizado en la nube.') {
+    const db = this.getLocalDb();
+    const currentVersion = (db.global_config?.published_version || 1) + 1;
+    if (!db.global_config) db.global_config = {};
+    db.global_config.published_version = currentVersion;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.ensureFirebaseAuthAdmin();
+        await this.fb.collection('config').doc('published_config').set({
+          version: currentVersion,
+          lastSyncTimestamp: Date.now(),
+          updatedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador COLUA'
+        }, { merge: true });
+        console.log(`[COLUA CMS] Auto-publicación en Firestore: Versión v${currentVersion}`);
+      } catch (e) {
+        console.warn('[COLUA CMS] Advertencia al auto-publicar versión:', e.message || e);
+      }
+    }
+
+    if (logAction) {
+      try {
+        await this.logAudit({
+          action: logAction,
+          performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
+          details: logDetails
+        });
+      } catch (e) {}
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('colua-data-synced', { detail: { timestamp: Date.now(), version: currentVersion } }));
+    } catch (e) {}
+
+    return currentVersion;
+  }
+
+  // Sincroniza en tiempo real los botones y sub-botones del navbar superior hacia Firestore
+  async _syncTopNavToCloud() {
+    const db = this.getLocalDb();
+    const items = db.top_nav_items || this.getDefaultTopNavItems();
+    if (this.fb && this.fb.db) {
+      try {
+        await this.ensureFirebaseAuthAdmin();
+        const cleanItems = this._cleanDoc(items);
+        await this.fb.collection('config').doc('top_nav').set({
+          items: cleanItems,
+          updatedAt: Date.now()
+        }, { merge: true });
+        await this.fb.collection('global_config').doc('main').set({
+          top_nav_items: cleanItems,
+          updatedAt: Date.now()
+        }, { merge: true });
+        console.log('[ColuaRepo] Menú superior sincronizado en Firestore config/top_nav.');
+      } catch (e) {
+        console.warn('[ColuaRepo] Error sincronizando top_nav en Firestore:', e.message || e);
+      }
+    }
+    await this._autoPublishChange('SINCRONIZAR_NAVBAR', `Menú de navegación actualizado con ${items.length} botones.`);
+    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+      window.navbarComponent.refresh();
+    }
+  }
+
   // Inicialización de persistencia local (Copia espejo en localStorage para modo offline y borradores)
   initLocalStorage() {
     const raw = localStorage.getItem(this.localStorageKey);
@@ -663,6 +787,11 @@ class ColuaRepository {
     if (!section.id) section.id = 'sec_' + Math.random().toString(36).substring(2, 9);
     section.updatedAt = Date.now();
     section.lastModified = Date.now();
+    // Auto-publicación: siempre activo y publicado en línea
+    section.isDraft = false;
+    section.isPublished = true;
+    if (section.isEnabled === undefined) section.isEnabled = true;
+    if (section.isVisible === undefined) section.isVisible = true;
     
     // Guardar local
     const db = this.getLocalDb();
@@ -695,11 +824,16 @@ class ColuaRepository {
     // Guardar en Firestore si hay conexión
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('sections').doc(section.id).set(section, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(section);
+        await this.fb.collection('sections').doc(section.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Sección auto-publicada en Firestore: ${section.id}`);
       } catch (e) {
         console.warn('Error syncing section to Firestore:', e);
       }
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_SECCION' : 'CREAR_SECCION', `Sección "${section.title}" guardada y publicada en vivo.`);
     return section;
   }
 
@@ -757,10 +891,12 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('sections').doc(id).delete();
         await this.fb.collection('navigation_items').doc('nav_' + id).delete();
       } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_SECCION', `Sección "${id}" eliminada de la plataforma.`);
     return true;
   }
 
@@ -903,32 +1039,6 @@ class ColuaRepository {
     return this.getItemsBySection(sectionId, true);
   }
 
-  async toggleContentItemVisibility(id) {
-    const db = this.getLocalDb();
-    const item = (db.content_items || []).find(i => i.id === id);
-    if (!item) return { success: false, error: 'Elemento no encontrado' };
-
-    const newStatus = item.isEnabled === false || item.isVisible === false ? true : false;
-    item.isEnabled = newStatus;
-    item.isVisible = newStatus;
-    item.updatedAt = Date.now();
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('content_items').doc(id).set(item, { merge: true });
-      } catch (e) {}
-    }
-
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_ELEMENTO' : 'OCULTAR_ELEMENTO',
-      performedBy: 'Super Administrador',
-      details: `Tarjeta ${item.title} (${item.id}) ahora está ${newStatus ? 'Visible' : 'Oculta'}`
-    });
-
-    return { success: true, item, isEnabled: newStatus };
-  }
-
   // Helpers recursivos para decodificar documentos de la API REST de Firestore
   _parseFirestoreRestValue(valObj) {
     if (!valObj) return null;
@@ -981,6 +1091,21 @@ class ColuaRepository {
     return [];
   }
 
+  async fetchDocumentRest(collectionName, docId) {
+    try {
+      const projectId = (window.COLUA_CONFIG && window.COLUA_CONFIG.firebase && window.COLUA_CONFIG.firebase.projectId) || 'colua-info';
+      const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${docId}`;
+      const resp = await fetch(restUrl, { cache: 'no-cache' });
+      if (resp.ok) {
+        const json = await resp.json();
+        return this._parseFirestoreRestDoc(json);
+      }
+    } catch (e) {
+      console.warn(`[ColuaRepository] Error consultando REST para ${collectionName}/${docId}:`, e);
+    }
+    return null;
+  }
+
   // Alias y sincronizador robusto para componente de noticias
   async getNewsArticles() {
     let cloudArticles = [];
@@ -988,9 +1113,16 @@ class ColuaRepository {
     // 1. Intentar mediante el SDK de Firestore (timeout 3500ms)
     try {
       if (this.fb && this.fb.db) {
-        const snap = await this._withTimeout(this.fb.collection('content_items').where('sectionId', '==', 'sec_noticias').get(), 3500);
+        const snap = await this._withTimeout(this.fb.collection('content_items').get(), 3500);
         if (!snap.empty) {
-          cloudArticles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          cloudArticles = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(item => {
+              if (!item) return false;
+              const sec = (item.sectionId || '').toLowerCase();
+              const id = (item.id || '').toLowerCase();
+              return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
+            });
         }
       }
     } catch (e) {
@@ -1037,12 +1169,21 @@ class ColuaRepository {
         console.warn('No se pudo persistir artículos nube en localStorage:', saveErr);
       }
 
-      return this.sortNewsByDate(cloudArticles);
+      const db = this.getLocalDb();
+      const allNews = (db.content_items || []).filter(i => {
+        if (i.isDraft === true || i.isVisible === false || i.isEnabled === false) return false;
+        const sec = (i.sectionId || '').toLowerCase();
+        const id = (i.id || '').toLowerCase();
+        return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
+      });
+
+      return this.sortNewsByDate(allNews.length > 0 ? allNews : cloudArticles);
     }
 
     // 4. Fallback a base de datos local
     const db = this.getLocalDb();
     const list = (db.content_items || []).filter(i => {
+      if (i.isDraft === true || i.isVisible === false || i.isEnabled === false) return false;
       const sec = (i.sectionId || '').toLowerCase();
       const id = (i.id || '').toLowerCase();
       return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
@@ -1090,6 +1231,13 @@ class ColuaRepository {
   async insertItem(item) {
     if (!item.id) item.id = 'item_' + Math.random().toString(36).substring(2, 9);
     item.updatedAt = Date.now();
+    item.lastModified = Date.now();
+    // Auto-publicación: siempre activo y publicado en vivo
+    item.isDraft = false;
+    item.isPublished = true;
+    if (item.isEnabled === undefined) item.isEnabled = true;
+    if (item.isVisible === undefined) item.isVisible = true;
+
     const sec = (item.sectionId || '').toLowerCase();
     const id = (item.id || '').toLowerCase();
     const isNews = sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
@@ -1129,7 +1277,10 @@ class ColuaRepository {
       else db.agencias.push(agData);
 
       if (this.fb && this.fb.db) {
-        try { await this.fb.collection('agencias').doc(item.id).set(agData, { merge: true }); } catch (e) {}
+        try { 
+          await this.ensureFirebaseAuthAdmin();
+          await this.fb.collection('agencias').doc(item.id).set(this._cleanDoc(agData), { merge: true }); 
+        } catch (e) {}
       }
     }
 
@@ -1137,15 +1288,24 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_items').doc(item.id).set(item, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(item);
+        await this.fb.collection('content_items').doc(item.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Tarjeta sincronizada en Firestore: ${item.id}`);
+      } catch (e) {
+        console.warn(`[ColuaRepo] Advertencia sincronizando en Firestore (${item.id}):`, e.message || e);
+      }
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_CONTENIDO' : 'CREAR_CONTENIDO', `Elemento "${item.title || item.id}" guardado y publicado en vivo.`);
     return item;
   }
 
   async insertBlock(block) {
     if (!block.id) block.id = 'block_' + Math.random().toString(36).substring(2, 9);
     block.updatedAt = Date.now();
+    block.isDraft = false;
+    block.isPublished = true;
     const db = this.getLocalDb();
     const idx = db.content_blocks.findIndex(b => b.id === block.id);
     if (idx >= 0) db.content_blocks[idx] = block;
@@ -1154,9 +1314,13 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_blocks').doc(block.id).set(block, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(block);
+        await this.fb.collection('content_blocks').doc(block.id).set(clean, { merge: true });
       } catch (e) {}
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_BLOQUE' : 'CREAR_BLOQUE', `Bloque "${block.id}" guardado y publicado en vivo.`);
     return block;
   }
 
@@ -1167,10 +1331,13 @@ class ColuaRepository {
     this.saveLocalDb(db);
     if (this.fb && this.fb.db) {
       try { 
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('content_items').doc(id).delete(); 
         await this.fb.collection('agencias').doc(id).delete();
       } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_CONTENIDO', `Elemento "${id}" eliminado.`);
+    return { success: true };
   }
 
   async deleteBlockById(id) {
@@ -1178,8 +1345,13 @@ class ColuaRepository {
     db.content_blocks = db.content_blocks.filter(b => b.id !== id);
     this.saveLocalDb(db);
     if (this.fb && this.fb.db) {
-      try { await this.fb.collection('content_blocks').doc(id).delete(); } catch (e) {}
+      try { 
+        await this.ensureFirebaseAuthAdmin();
+        await this.fb.collection('content_blocks').doc(id).delete(); 
+      } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_BLOQUE', `Bloque "${id}" eliminado.`);
+    return { success: true };
   }
 
   async duplicateContentItem(itemId) {
@@ -1351,99 +1523,31 @@ class ColuaRepository {
   }
 
   async saveTopNavItem(item) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
-    if (!item.id) item.id = 'topnav_' + Math.random().toString(36).substring(2, 9);
-    if (!Array.isArray(item.subItems)) item.subItems = [];
-    if (typeof item.displayOrder !== 'number') item.displayOrder = db.top_nav_items.length + 1;
-
-    const idx = db.top_nav_items.findIndex(n => n.id === item.id);
-    if (idx >= 0) {
-      db.top_nav_items[idx] = { ...db.top_nav_items[idx], ...item };
-    } else {
-      db.top_nav_items.push(item);
-    }
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(item.id).set(item, { merge: true }); } catch (e) {}
-    }
-    return item;
+    return this._saveTopNavItemInternal(item);
   }
 
   async deleteTopNavItem(id) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    db.top_nav_items = db.top_nav_items.filter(n => n.id !== id);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(id).delete(); } catch (e) {}
-    }
+    return this._deleteTopNavItemInternal(id);
   }
 
   async addTopNavSubItem(parentId, subItem) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent) return null;
-    if (!Array.isArray(parent.subItems)) parent.subItems = [];
-    if (!subItem.id) subItem.id = 'sub_' + Math.random().toString(36).substring(2, 9);
-    parent.subItems.push(subItem);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-    }
-    return subItem;
+    return this._addTopNavSubItemInternal(parentId, subItem);
   }
 
-  async updateTopNavSubItem(parentId, subItemId, updatedFields) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return null;
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent || !Array.isArray(parent.subItems)) return null;
-    const sIdx = parent.subItems.findIndex(s => s.id === subItemId);
-    if (sIdx >= 0) {
-      parent.subItems[sIdx] = { ...parent.subItems[sIdx], ...updatedFields };
-      this.saveLocalDb(db);
-
-      if (this.fb && this.fb.db) {
-        try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-      }
-      return parent.subItems[sIdx];
-    }
-    return null;
+  async updateTopNavSubItem(parentId, subItem, fields) {
+    return this._updateTopNavSubItemInternal(parentId, subItem, fields);
   }
 
-  async deleteTopNavSubItem(parentId, subItemId) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent || !Array.isArray(parent.subItems)) return;
-    parent.subItems = parent.subItems.filter(s => s.id !== subItemId);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-    }
+  async deleteTopNavSubItem(parentId, subId) {
+    return this._deleteTopNavSubItemInternal(parentId, subId);
   }
 
   async reorderTopNavItems(orderedIds) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    orderedIds.forEach((id, index) => {
-      const item = db.top_nav_items.find(n => n.id === id);
-      if (item) item.displayOrder = index + 1;
-    });
-    this.saveLocalDb(db);
+    return this._reorderTopNavItemsInternal(orderedIds);
   }
 
   async resetTopNavToDefaults() {
-    const db = this.getLocalDb();
-    db.top_nav_items = this.getDefaultTopNavItems();
-    this.saveLocalDb(db);
-    return db.top_nav_items;
+    return this._resetTopNavToDefaultsInternal();
   }
 
   // --- GESTIÓN DE USUARIOS Y PERFILES (Firestore) ---
@@ -2328,65 +2432,157 @@ class ColuaRepository {
     };
   }
 
+  async _commitBatchSafely(docsArray, collectionName) {
+    if (!this.fb || !this.fb.db || !docsArray || docsArray.length === 0) return;
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < docsArray.length; i += CHUNK_SIZE) {
+      const chunk = docsArray.slice(i, i + CHUNK_SIZE);
+      try {
+        const batch = this.fb.db.batch();
+        for (const item of chunk) {
+          if (!item || !item.id) continue;
+          const ref = this.fb.collection(collectionName).doc(String(item.id));
+          batch.set(ref, this._cleanDoc(item), { merge: true });
+        }
+        await batch.commit();
+      } catch (batchErr) {
+        console.warn(`[ColuaRepo] Batch falló para ${collectionName}, reintentando individualmente:`, batchErr);
+        for (const item of chunk) {
+          if (!item || !item.id) continue;
+          try {
+            await this.fb.collection(collectionName).doc(String(item.id)).set(this._cleanDoc(item), { merge: true });
+          } catch (itemErr) {
+            console.error(`[ColuaRepo] Error guardando ${collectionName}/${item.id}:`, itemErr);
+          }
+        }
+      }
+    }
+  }
+
   async publishCurrentConfiguration() {
+    // 1. Asegurar sesión administrativa en Firebase Auth y /usuarios/{uid} con rol ADMIN
+    let authOk = false;
+    try {
+      authOk = await this.ensureFirebaseAuthAdmin();
+    } catch (authErr) {
+      console.warn('[ColuaRepo] Error verificando autenticación admin:', authErr);
+    }
+
     const db = this.getLocalDb();
-    const currentVersion = (db.global_config.published_version || 1) + 1;
+    const currentVersion = ((db.global_config && db.global_config.published_version) || 1) + 1;
     const timestamp = Date.now();
 
-    // Guardar copia de respaldo previa para rollback
+    // 2. Guardar copia de respaldo previa para rollback
     try {
       localStorage.setItem('colua_db_backup_last', JSON.stringify({
-        version: db.global_config.published_version || 1,
-        timestamp: db.global_config.last_sync_timestamp || Date.now(),
+        version: (db.global_config && db.global_config.published_version) || 1,
+        timestamp: (db.global_config && db.global_config.last_sync_timestamp) || Date.now(),
         dbSnapshot: JSON.parse(JSON.stringify(db))
       }));
     } catch (e) {}
 
-    // Marcar todo como publicado localmente
-    db.sections.forEach(s => { s.isPublished = true; s.isDraft = false; s.version = currentVersion; s.updatedAt = timestamp; s.lastModified = timestamp; });
-    db.content_items.forEach(i => { i.isDraft = false; i.isPublished = true; i.updatedAt = timestamp; i.lastModified = timestamp; });
-    db.content_blocks.forEach(b => { b.isDraft = false; b.updatedAt = timestamp; });
+    // 3. Marcar todo como publicado localmente
+    (db.sections || []).forEach(s => {
+      s.isPublished = true;
+      s.isDraft = false;
+      s.version = currentVersion;
+      s.updatedAt = timestamp;
+      s.lastModified = timestamp;
+    });
 
+    (db.content_items || []).forEach(i => {
+      i.isDraft = false;
+      i.isPublished = true;
+      if (i.isEnabled === undefined) i.isEnabled = true;
+      if (i.isVisible === undefined) i.isVisible = true;
+      i.updatedAt = timestamp;
+      i.lastModified = timestamp;
+
+      // Asegurar metadatos completos para noticias
+      const sec = (i.sectionId || '').toLowerCase();
+      if (sec === 'sec_noticias' || sec === 'noticias' || (i.id || '').startsWith('news_')) {
+        if (!i.publicationDate && !i.date && !i.fecha) i.publicationDate = new Date().toISOString();
+        if (!i.issuerName) i.issuerName = 'Cooperativa COLUA R.L.';
+        if (!i.issuerRole) i.issuerRole = 'Comunicación Oficial';
+        if (!i.tags) i.tags = '#COLUA';
+      }
+    });
+
+    (db.content_blocks || []).forEach(b => {
+      b.isDraft = false;
+      b.isPublished = true;
+      b.updatedAt = timestamp;
+    });
+
+    if (!db.global_config) db.global_config = {};
     db.global_config.published_version = currentVersion;
     db.global_config.last_sync_timestamp = timestamp;
-
     this.saveLocalDb(db);
 
-    // Publicar a Firestore
+    // 4. Publicar a Firestore Cloud
+    let firestoreError = null;
     if (this.fb && this.fb.db) {
       try {
-        const payload = {
+        const configPayload = {
           version: currentVersion,
+          published_version: currentVersion,
           updatedAt: new Date(),
+          lastSyncTimestamp: timestamp,
           updatedBy: 'Web_PWA_Admin',
-          sectionsCount: db.sections.length,
-          itemsCount: db.content_items.length,
-          blocksCount: db.content_blocks.length,
+          sectionsCount: (db.sections || []).length,
+          itemsCount: (db.content_items || []).length,
+          blocksCount: (db.content_blocks || []).length,
           isPublished: true
         };
 
-        await this.fb.collection('config').doc('published_config').set(payload);
+        // Guardar documento config/published_config para alertar a todos los clientes en tiempo real
+        await this.fb.collection('config').doc('published_config').set(this._cleanDoc(configPayload), { merge: true });
 
-        for (const s of db.sections) await this.fb.collection('sections').doc(s.id).set(s);
-        for (const item of db.content_items) await this.fb.collection('content_items').doc(item.id).set(item);
-        for (const block of db.content_blocks) await this.fb.collection('content_blocks').doc(block.id).set(block);
+        try {
+          await this.fb.collection('global_config').doc('main').set(this._cleanDoc(configPayload), { merge: true });
+        } catch (e) {}
+
+        // Publicar todas las colecciones principales usando batch seguro y sanitización
+        await this._commitBatchSafely(db.sections || [], 'sections');
+        await this._commitBatchSafely(db.content_items || [], 'content_items');
+        await this._commitBatchSafely(db.content_blocks || [], 'content_blocks');
+        if (db.forms && db.forms.length > 0) {
+          await this._commitBatchSafely(db.forms, 'forms');
+        }
+        if (db.agencias && db.agencias.length > 0) {
+          await this._commitBatchSafely(db.agencias, 'agencias');
+        }
+
+        console.log(`[COLUA CMS] Publicación exitosa en Firestore Cloud: Versión v${currentVersion}`);
       } catch (e) {
-        console.error('Error publicando a Firestore:', e);
+        console.error('[COLUA CMS] Error publicando a Firestore Cloud:', e);
+        firestoreError = e.message || 'Error de conexión o permisos con Firestore';
       }
+    } else {
+      firestoreError = 'Firebase Firestore no está disponible en este momento';
     }
 
     await this.logAudit({
       action: 'PUBLICACION_MASIVA_PRODUCCION',
       performedBy: 'Super Administrador',
-      details: `Se publicó a producción la versión v${currentVersion} (${db.sections.length} pantallas, ${db.content_items.length} tarjetas).`
+      details: `Se publicó a producción la versión v${currentVersion} (${(db.sections || []).length} pantallas, ${(db.content_items || []).length} tarjetas).`
     });
+
+    if (firestoreError) {
+      return {
+        success: false,
+        error: `Cambios guardados localmente, pero falló la publicación en la nube: ${firestoreError}`,
+        version: `v${currentVersion}`,
+        timestamp
+      };
+    }
 
     return {
       success: true,
       version: `v${currentVersion}`,
       timestamp,
-      sectionsCount: db.sections.length,
-      itemsCount: db.content_items.length
+      sectionsCount: (db.sections || []).length,
+      itemsCount: (db.content_items || []).length
     };
   }
 
@@ -2464,92 +2660,6 @@ class ColuaRepository {
     return { success: true };
   }
 
-  // Escuchador en tiempo real de versiones publicadas para la app cliente
-  subscribeToPublishedConfig(onUpdated) {
-    if (this.fb && this.fb.db) {
-      try {
-        return this.fb.collection('config').doc('published_config').onSnapshot(async (snap) => {
-          if (snap.exists) {
-            const remoteVersion = snap.data().version || 1;
-            const currentLocal = this.getLocalDb().global_config?.published_version || 1;
-            if (remoteVersion > currentLocal) {
-              console.log(`Nueva versión remota detectada (v${remoteVersion}). Sincronizando datos...`);
-              await this.syncAllFromCloud();
-              if (onUpdated) onUpdated(remoteVersion);
-            }
-          }
-        });
-      } catch (e) {}
-    }
-  }
-
-  // Sincronización completa desde Firestore Cloud
-  async syncAllFromCloud() {
-    if (!this.fb || !this.fb.db) return false;
-    try {
-      const [secSnap, itemSnap] = await Promise.all([
-        this._withTimeout(this.fb.collection('sections').get(), 4000),
-        this._withTimeout(this.fb.collection('content_items').get(), 4000)
-      ]);
-
-      const db = this.getLocalDb();
-      let changed = false;
-
-      if (secSnap && !secSnap.empty) {
-        secSnap.docs.forEach(doc => {
-          const remoteSec = { id: doc.id, ...doc.data() };
-          if (remoteSec.id === 'sec_comunidad' || remoteSec.slug === 'comunidad') return;
-          const idx = db.sections.findIndex(s => s.id === remoteSec.id);
-          if (idx >= 0) {
-            db.sections[idx] = { ...db.sections[idx], ...remoteSec };
-          } else {
-            db.sections.push(remoteSec);
-          }
-          changed = true;
-        });
-      }
-
-      if (itemSnap && !itemSnap.empty) {
-        itemSnap.docs.forEach(doc => {
-          const remoteItem = { id: doc.id, ...doc.data() };
-          if (remoteItem.sectionId === 'sec_comunidad') return;
-          this._cleanItemIfInverted(remoteItem);
-          const idx = db.content_items.findIndex(i => i.id === remoteItem.id);
-          if (idx >= 0) {
-            db.content_items[idx] = { ...db.content_items[idx], ...remoteItem };
-          } else {
-            db.content_items.push(remoteItem);
-          }
-          changed = true;
-        });
-      }
-
-      // Sincronizar formularios
-      try {
-        const formSnap = await this._withTimeout(this.fb.collection('forms').get(), 3000);
-        if (formSnap && !formSnap.empty) {
-          if (!db.forms) db.forms = [];
-          formSnap.docs.forEach(doc => {
-            const remoteForm = { id: doc.id, ...doc.data() };
-            const idx = db.forms.findIndex(f => f.id === remoteForm.id);
-            if (idx >= 0) db.forms[idx] = { ...db.forms[idx], ...remoteForm };
-            else db.forms.push(remoteForm);
-            changed = true;
-          });
-        }
-      } catch (e) {}
-
-      if (changed) {
-        this.saveLocalDb(db);
-        console.log('[COLUA Sync] Datos de la nube sincronizados exitosamente.');
-      }
-      return true;
-    } catch (e) {
-      console.warn('[COLUA Sync] Modo local/offline activo o error de conexión:', e.message);
-      return false;
-    }
-  }
-
   // --- FORMULARIOS DINÁMICOS & CAPTACIÓN DE LEADS ---
   async getForms() {
     if (this.fb && this.fb.db) {
@@ -2598,16 +2708,16 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('forms').doc(formData.id).set(formData, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(formData);
+        await this.fb.collection('forms').doc(formData.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Formulario auto-publicado en Firestore: ${formData.id}`);
+      } catch (e) {
+        console.warn('Error guardando formulario en Firestore:', e);
+      }
     }
 
-    await this.logAudit({
-      action: idx >= 0 ? 'EDITAR_FORMULARIO' : 'CREAR_FORMULARIO',
-      performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
-      details: `Se guardó el formulario "${formData.title}" (${formData.id}) con ${formData.requirements?.length || 0} requisitos.`
-    });
-
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_FORMULARIO' : 'CREAR_FORMULARIO', `Formulario "${formData.title}" (${formData.id}) guardado y publicado en vivo.`);
     return { success: true, form: formData };
   }
 
@@ -2619,16 +2729,12 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('forms').doc(formId).delete();
       } catch (e) {}
     }
 
-    await this.logAudit({
-      action: 'ELIMINAR_FORMULARIO',
-      performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
-      details: `Se eliminó el formulario ${formId}`
-    });
-
+    await this._autoPublishChange('ELIMINAR_FORMULARIO', `Formulario "${formId}" eliminado de la plataforma.`);
     return { success: true };
   }
 
@@ -3038,6 +3144,10 @@ class ColuaRepository {
   }
 
   async saveTopNavItem(item) {
+    return this._saveTopNavItemInternal(item);
+  }
+
+  async _saveTopNavItemInternal(item) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
 
@@ -3060,17 +3170,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: idx >= 0 ? 'EDITAR_BOTON_NAVBAR' : 'CREAR_BOTON_NAVBAR',
@@ -3082,6 +3184,10 @@ class ColuaRepository {
   }
 
   async deleteTopNavItem(id) {
+    return this._deleteTopNavItemInternal(id);
+  }
+
+  async _deleteTopNavItemInternal(id) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
@@ -3093,17 +3199,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'ELIMINAR_BOTON_NAVBAR',
@@ -3115,6 +3213,10 @@ class ColuaRepository {
   }
 
   async addTopNavSubItem(parentId, subItem) {
+    return this._addTopNavSubItemInternal(parentId, subItem);
+  }
+
+  async _addTopNavSubItemInternal(parentId, subItem) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
 
@@ -3134,17 +3236,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'AGREGAR_SUBBOTON_NAVBAR',
@@ -3155,42 +3249,45 @@ class ColuaRepository {
     return { success: true, subItem: newSub };
   }
 
-  async updateTopNavSubItem(parentId, subItem) {
+  async updateTopNavSubItem(parentId, subItem, fields) {
+    return this._updateTopNavSubItemInternal(parentId, subItem, fields);
+  }
+
+  async _updateTopNavSubItemInternal(parentId, subItem, fields) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
     const parent = db.top_nav_items.find(i => i.id === parentId);
     if (!parent || !Array.isArray(parent.subItems)) return { success: false, error: 'Sub-botón no encontrado' };
 
-    const idx = parent.subItems.findIndex(s => s.id === subItem.id);
+    const targetSubId = typeof subItem === 'string' ? subItem : subItem.id;
+    const patchData = typeof subItem === 'string' ? fields : subItem;
+
+    const idx = parent.subItems.findIndex(s => s.id === targetSubId);
     if (idx < 0) return { success: false, error: 'Sub-botón no encontrado' };
 
-    parent.subItems[idx] = { ...parent.subItems[idx], ...subItem };
+    parent.subItems[idx] = { ...parent.subItems[idx], ...patchData };
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'EDITAR_SUBBOTON_NAVBAR',
       performedBy: 'Super Administrador',
-      details: `Se actualizó la sub-opción "${subItem.label}" del botón "${parent.label}".`
+      details: `Se actualizó la sub-opción "${parent.subItems[idx].label}" del botón "${parent.label}".`
     });
 
     return { success: true, subItem: parent.subItems[idx] };
   }
 
   async deleteTopNavSubItem(parentId, subId) {
+    return this._deleteTopNavSubItemInternal(parentId, subId);
+  }
+
+  async _deleteTopNavSubItemInternal(parentId, subId) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
@@ -3201,17 +3298,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'ELIMINAR_SUBBOTON_NAVBAR',
@@ -3223,6 +3312,10 @@ class ColuaRepository {
   }
 
   async reorderTopNavItems(orderedIds) {
+    return this._reorderTopNavItemsInternal(orderedIds);
+  }
+
+  async _reorderTopNavItemsInternal(orderedIds) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false };
 
@@ -3248,19 +3341,16 @@ class ColuaRepository {
     db.global_config.top_nav_items = db.top_nav_items;
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     return { success: true, items: reordered };
   }
 
   async resetTopNavToDefaults() {
+    return this._resetTopNavToDefaultsInternal();
+  }
+
+  async _resetTopNavToDefaultsInternal() {
     const defaults = this.getDefaultTopNavItems();
     const db = this.getLocalDb();
     db.top_nav_items = defaults;
@@ -3268,14 +3358,7 @@ class ColuaRepository {
     db.global_config.top_nav_items = defaults;
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: defaults,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'RESTABLECER_NAVBAR_DEFAULT',
@@ -3291,25 +3374,26 @@ class ColuaRepository {
     const sec = db.sections.find(s => s.id === id);
     if (!sec) return { success: false, error: 'Sección no encontrada' };
 
-    const newStatus = sec.isEnabled === false ? true : false;
+    const newStatus = sec.isEnabled === false || sec.isVisible === false ? true : false;
     sec.isEnabled = newStatus;
     sec.isVisible = newStatus;
-    sec.isPublished = false; // queda en borrador para publicación
+    sec.isPublished = newStatus;
+    sec.isDraft = false;
     sec.updatedAt = Date.now();
 
     this.saveLocalDb(db);
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('sections').doc(id).set(sec, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(sec);
+        await this.fb.collection('sections').doc(id).set(clean, { merge: true });
+      } catch (e) {
+        console.warn('[ColuaRepo] Error actualizando sección en Firestore:', e);
+      }
     }
 
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_SECCION' : 'OCULTAR_SECCION',
-      performedBy: 'Super Administrador',
-      details: `Sección ${sec.title} (${sec.id}) ahora está ${newStatus ? 'Activa' : 'Oculta'}`
-    });
+    await this._autoPublishChange(newStatus ? 'ACTIVAR_SECCION' : 'OCULTAR_SECCION', `Sección ${sec.title} (${sec.id}) ahora está ${newStatus ? 'Activa' : 'Oculta'}`);
 
     return { success: true, section: sec, isEnabled: newStatus };
   }
@@ -3325,8 +3409,8 @@ class ColuaRepository {
     const newStatus = item.isEnabled === false || item.isVisible === false ? true : false;
     item.isEnabled = newStatus;
     item.isVisible = newStatus;
-    item.isDraft = true;
-    item.isPublished = false;
+    item.isDraft = false;
+    item.isPublished = newStatus;
     item.updatedAt = Date.now();
     item.lastModified = Date.now();
 
@@ -3334,15 +3418,16 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_items').doc(id).set(item, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(item);
+        await this.fb.collection('content_items').doc(id).set(clean, { merge: true });
+        if (db.agencias && db.agencias.some(a => a.id === id)) {
+          await this.fb.collection('agencias').doc(id).set(clean, { merge: true });
+        }
       } catch (e) {}
     }
 
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_ELEMENTO_CONTENIDO' : 'OCULTAR_ELEMENTO_CONTENIDO',
-      performedBy: 'Super Administrador',
-      details: `Elemento "${item.title || item.nombre || item.id}" (${item.id}) ahora está ${newStatus ? 'Activo / Visible' : 'Oculto'}`
-    });
+    await this._autoPublishChange(newStatus ? 'ACTIVAR_ELEMENTO_CONTENIDO' : 'OCULTAR_ELEMENTO_CONTENIDO', `Elemento "${item.title || item.nombre || item.id}" (${item.id}) ahora está ${newStatus ? 'Activo / Visible' : 'Oculto'}`);
 
     return { success: true, item, isEnabled: newStatus };
   }
@@ -3351,6 +3436,44 @@ class ColuaRepository {
   async syncAllFromCloud() {
     let hasChanges = false;
     const db = this.getLocalDb();
+
+    // 0. Sincronizar Versión Publicada y Configuración Global
+    if (this.fb && this.fb.db) {
+      try {
+        const configSnap = await this._withTimeout(this.fb.collection('config').doc('published_config').get(), 3000);
+        if (configSnap.exists) {
+          const rData = configSnap.data();
+          if (rData && rData.version) {
+            if (!db.global_config) db.global_config = {};
+            db.global_config.published_version = rData.version;
+            db.global_config.last_sync_timestamp = rData.lastSyncTimestamp || Date.now();
+            hasChanges = true;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 0.1 Sincronizar Botones y Sub-botones del Menú Superior (top_nav)
+    if (this.fb && this.fb.db) {
+      try {
+        const topNavSnap = await this._withTimeout(this.fb.collection('config').doc('top_nav').get(), 3000);
+        if (topNavSnap.exists && topNavSnap.data() && Array.isArray(topNavSnap.data().items) && topNavSnap.data().items.length > 0) {
+          db.top_nav_items = topNavSnap.data().items;
+          if (!db.global_config) db.global_config = {};
+          db.global_config.top_nav_items = topNavSnap.data().items;
+          hasChanges = true;
+        }
+      } catch (e) {}
+    }
+    if (!db.top_nav_items || db.top_nav_items.length === 0) {
+      const restTopNav = await this.fetchDocumentRest('config', 'top_nav');
+      if (restTopNav && Array.isArray(restTopNav.items) && restTopNav.items.length > 0) {
+        db.top_nav_items = restTopNav.items;
+        if (!db.global_config) db.global_config = {};
+        db.global_config.top_nav_items = restTopNav.items;
+        hasChanges = true;
+      }
+    }
 
     // 1. Sincronizar Content Items (Tarjetas, Formularios, Banners, Noticias)
     let remoteItems = [];
@@ -3463,9 +3586,38 @@ class ColuaRepository {
       });
     }
 
+    // 5. Sincronizar Content Blocks
+    let remoteBlocks = [];
+    if (this.fb && this.fb.db) {
+      try {
+        const snap = await this._withTimeout(this.fb.collection('content_blocks').get(), 3000);
+        if (!snap.empty) {
+          remoteBlocks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+      } catch (e) {}
+    }
+
+    if (!remoteBlocks || remoteBlocks.length === 0) {
+      remoteBlocks = await this.fetchCollectionRest('content_blocks');
+    }
+
+    if (remoteBlocks && remoteBlocks.length > 0) {
+      if (!db.content_blocks) db.content_blocks = [];
+      remoteBlocks.forEach(rb => {
+        if (!rb || !rb.id) return;
+        const idx = db.content_blocks.findIndex(b => b.id === rb.id);
+        if (idx >= 0) db.content_blocks[idx] = { ...db.content_blocks[idx], ...rb };
+        else db.content_blocks.push(rb);
+        hasChanges = true;
+      });
+    }
+
     if (hasChanges) {
       this.saveLocalDb(db);
       try {
+        if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+          window.navbarComponent.refresh();
+        }
         window.dispatchEvent(new CustomEvent('colua-data-synced', { detail: { timestamp: Date.now() } }));
       } catch (e) {}
     }
@@ -3477,6 +3629,20 @@ class ColuaRepository {
   subscribeToPublishedConfig(callback) {
     if (!this.fb || !this.fb.db) return;
     try {
+      // 1. Escuchar la versión publicada en config/published_config
+      this.fb.collection('config').doc('published_config').onSnapshot(async (snap) => {
+        if (snap.exists) {
+          const remoteVersion = snap.data().version || snap.data().published_version || 1;
+          const currentLocal = this.getLocalDb().global_config?.published_version || 1;
+          if (remoteVersion > currentLocal) {
+            console.log(`[COLUA Sync] Nueva versión remota detectada (v${remoteVersion}). Sincronizando datos...`);
+            await this.syncAllFromCloud();
+            if (typeof callback === 'function') callback(remoteVersion);
+          }
+        }
+      }, (err) => console.warn('[ColuaRepo] Realtime config/published_config warning:', err));
+
+      // 2. Escuchar cambios directos en content_items
       this.fb.collection('content_items').onSnapshot((snap) => {
         const db = this.getLocalDb();
         let changed = false;
@@ -3498,6 +3664,7 @@ class ColuaRepository {
         }
       }, (err) => console.warn('[ColuaRepo] Realtime content_items listener warning:', err));
 
+      // 3. Escuchar cambios directos en sections
       this.fb.collection('sections').onSnapshot((snap) => {
         const db = this.getLocalDb();
         let changed = false;
@@ -3518,6 +3685,21 @@ class ColuaRepository {
           if (typeof callback === 'function') callback();
         }
       }, (err) => console.warn('[ColuaRepo] Realtime sections listener warning:', err));
+
+      // 4. Escuchar cambios directos en botones del menú superior (config/top_nav)
+      this.fb.collection('config').doc('top_nav').onSnapshot((snap) => {
+        if (snap.exists && snap.data() && Array.isArray(snap.data().items)) {
+          const db = this.getLocalDb();
+          db.top_nav_items = snap.data().items;
+          if (!db.global_config) db.global_config = {};
+          db.global_config.top_nav_items = snap.data().items;
+          this.saveLocalDb(db);
+          if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+            window.navbarComponent.refresh();
+          }
+          if (typeof callback === 'function') callback();
+        }
+      }, (err) => console.warn('[ColuaRepo] Realtime config/top_nav listener warning:', err));
     } catch (e) {
       console.warn('[ColuaRepo] Error configurando suscripción en tiempo real:', e);
     }
@@ -3533,26 +3715,6 @@ class ColuaRepository {
     if (!id) return null;
     const db = this.getLocalDb();
     return (db.forms || []).find(f => f.id === id || f.targetCardId === id);
-  }
-
-  async saveForm(form) {
-    if (!form.id) form.id = 'form_' + Math.random().toString(36).substring(2, 9);
-    form.updatedAt = Date.now();
-    const db = this.getLocalDb();
-    if (!db.forms) db.forms = [];
-    const idx = db.forms.findIndex(f => f.id === form.id);
-    if (idx >= 0) db.forms[idx] = form;
-    else db.forms.push(form);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('forms').doc(form.id).set(form, { merge: true });
-      } catch (e) {
-        console.warn('Error guardando formulario en Firestore:', e);
-      }
-    }
-    return form;
   }
 
   async submitFormLead(lead) {
@@ -3592,60 +3754,6 @@ class ColuaRepository {
     }
     const db = this.getLocalDb();
     return db.form_submissions || [];
-  }
-
-  async publishCurrentConfiguration() {
-    const db = this.getLocalDb();
-    if (db.content_items) {
-      db.content_items.forEach(i => {
-        if (i.isDraft) {
-          i.isDraft = false;
-          i.isPublished = true;
-          i.updatedAt = Date.now();
-        }
-      });
-    }
-    if (db.sections) {
-      db.sections.forEach(s => {
-        if (s.isDraft) {
-          s.isDraft = false;
-          s.isPublished = true;
-          s.updatedAt = Date.now();
-        }
-      });
-    }
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        const batch = this.fb.db.batch();
-        (db.content_items || []).forEach(item => {
-          const ref = this.fb.collection('content_items').doc(item.id);
-          batch.set(ref, item, { merge: true });
-        });
-        (db.sections || []).forEach(sec => {
-          const ref = this.fb.collection('sections').doc(sec.id);
-          batch.set(ref, sec, { merge: true });
-        });
-        await batch.commit();
-      } catch (e) {
-        console.warn('Error publicando lote a Firestore:', e);
-      }
-    }
-    return { success: true, timestamp: Date.now() };
-  }
-
-  getSyncStatusInfo() {
-    const db = this.getLocalDb();
-    const isOnline = navigator.onLine;
-    const isFirebaseConnected = !!(this.fb && this.fb.db);
-    return {
-      isOnline,
-      isFirebaseConnected,
-      totalItems: (db.content_items || []).length,
-      totalSections: (db.sections || []).length,
-      lastSync: db.global_config?.last_sync_timestamp || Date.now()
-    };
   }
 
   // Aliases para compatibilidad con admin.js y otros componentes

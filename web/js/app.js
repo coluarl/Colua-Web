@@ -65,11 +65,17 @@ const App = {
         try {
             if (window.coluaRepository) {
                 window.coluaRepository.syncAllFromCloud().then((synced) => {
+                    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+                        window.navbarComponent.refresh();
+                    }
                     if (synced && window.router && (window.location.hash === '#inicio' || window.location.hash === '' || window.location.hash === '#/')) {
                         window.router.handleRouting();
                     }
                 });
                 window.coluaRepository.subscribeToPublishedConfig(() => {
+                    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+                        window.navbarComponent.refresh();
+                    }
                     if (window.router) window.router.handleRouting();
                 });
             }

@@ -175,9 +175,6 @@ class AdminComponent {
                         <button class="cms-tab-btn ${this.activeTab === 'stats' ? 'active' : ''}" data-tab="stats" style="display: inline-flex; align-items: center; gap: 6px;">
                             ${ADMIN_ICONS.chart} <span>Estadísticas</span>
                         </button>
-                        <button class="cms-tab-btn ${this.activeTab === 'sync' ? 'active' : ''}" data-tab="sync" style="display: inline-flex; align-items: center; gap: 6px;">
-                            ${ADMIN_ICONS.sync} <span>Publicación</span>
-                        </button>
                         ${authService.isSuperAdmin() ? `
                             <button class="cms-tab-btn ${this.activeTab === 'rbac' ? 'active' : ''}" data-tab="rbac" style="display: inline-flex; align-items: center; gap: 6px;">
                                 ${ADMIN_ICONS.users} <span>Usuarios y Roles</span>
@@ -189,6 +186,12 @@ class AdminComponent {
                         <button class="cms-tab-btn ${this.activeTab === 'instrucciones' ? 'active' : ''}" data-tab="instrucciones" style="display: inline-flex; align-items: center; gap: 6px;">
                             ${ADMIN_ICONS.book} <span>Instrucciones</span>
                         </button>
+                        <div style="margin-left: auto; display: flex; align-items: center; padding: 4px 8px;">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 5px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #bbf7d0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); white-space: nowrap;">
+                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 6px #22c55e;"></span>
+                                Publicación Automática en Línea
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -396,37 +399,49 @@ class AdminComponent {
                 const userVal = container.querySelector('#admin-user-input').value.trim();
                 const passVal = passInput.value;
 
-                const res = await authService.loginAdminWithCredentials(userVal, passVal);
-                if (res.success && authService.isAdminSessionActive()) {
-                    const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
-                    if (window.Swal) {
-                        await Swal.fire({
-                            title: "¡Bienvenido al Panel CMS!",
-                            text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
-                            icon: "success",
-                            timer: 1500,
-                            showConfirmButton: false,
-                            draggable: true
-                        });
+                try {
+                    const res = await authService.loginAdminWithCredentials(userVal, passVal);
+                    if (res && res.success && authService.isAdminSessionActive()) {
+                        const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
+                        if (window.Swal) {
+                            await Swal.fire({
+                                title: "¡Bienvenido al Panel CMS!",
+                                text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
+                                icon: "success",
+                                timer: 1500,
+                                showConfirmButton: false,
+                                draggable: true
+                            });
+                        } else {
+                            app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        }
+                        this.render(container);
                     } else {
-                        app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
+                            ? res.error
+                            : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                        if (window.Swal) {
+                            Swal.fire({
+                                title: "Acceso Denegado",
+                                text: cleanErr,
+                                icon: "error",
+                                draggable: true,
+                                confirmButtonColor: "#173789",
+                                confirmButtonText: "Reintentar"
+                            });
+                        } else {
+                            app.showToast(cleanErr, 'danger');
+                        }
                     }
-                    this.render(container);
-                } else {
-                    const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
-                        ? res.error
-                        : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                } catch (submitErr) {
+                    console.error('[AdminComponent] Error al iniciar sesión administrativa:', submitErr);
                     if (window.Swal) {
                         Swal.fire({
-                            title: "Acceso Denegado",
-                            text: cleanErr,
+                            title: "Error de Validación",
+                            text: submitErr.message || "Ocurrió un error inesperado al procesar las credenciales.",
                             icon: "error",
-                            draggable: true,
-                            confirmButtonColor: "#173789",
-                            confirmButtonText: "Reintentar"
+                            confirmButtonColor: "#173789"
                         });
-                    } else {
-                        app.showToast(cleanErr, 'danger');
                     }
                 }
             });
@@ -486,6 +501,10 @@ class AdminComponent {
 
         contentEl.innerHTML = `<div style="text-align: center; padding: 40px;"><div class="spinner"></div></div>`;
 
+        if (this.activeTab === 'sync') {
+            this.activeTab = 'pantallas';
+        }
+
         try {
             switch (this.activeTab) {
                 case 'pantallas':
@@ -499,9 +518,6 @@ class AdminComponent {
                     break;
                 case 'stats':
                     await this.renderTabStats(contentEl);
-                    break;
-                case 'sync':
-                    await this.renderTabSync(contentEl);
                     break;
                 case 'rbac':
                     await this.renderTabRBAC(contentEl);
@@ -1196,8 +1212,8 @@ class AdminComponent {
                 orderIndex: parseInt(document.getElementById('sec-order').value) || 1,
                 isEnabled: document.getElementById('sec-enabled').checked,
                 isVisible: document.getElementById('sec-enabled').checked,
-                isDraft: true,
-                isPublished: false,
+                isDraft: false,
+                isPublished: true,
                 lastModified: Date.now()
             };
 
@@ -1210,10 +1226,10 @@ class AdminComponent {
 
             app.closeModal();
             Swal.fire({
-                title: "¡Sección Guardada!",
-                text: `La sección "${updated.title}" ha sido guardada en borrador para publicación.`,
+                title: isNew ? "¡Sección Creada y Publicada!" : "¡Sección Actualizada y Publicada!",
+                text: `La sección "${updated.title}" ha sido guardada y publicada en línea con éxito.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -1312,10 +1328,10 @@ class AdminComponent {
             app.closeModal();
 
             Swal.fire({
-                title: isNew ? "¡Botón Creado!" : "¡Botón Actualizado!",
-                text: `El botón "${labelVal}" ha sido configurado en el menú superior.`,
+                title: isNew ? "¡Botón Creado y Publicado!" : "¡Botón Actualizado y Publicado!",
+                text: `El botón "${labelVal}" ha sido guardado y publicado en línea en la barra superior.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -1406,10 +1422,10 @@ class AdminComponent {
             app.closeModal();
 
             Swal.fire({
-                title: isNew ? "¡Sub-botón Agregado!" : "¡Sub-botón Actualizado!",
-                text: `La sub-opción "${labelVal}" se ha guardado en el menú desplegable.`,
+                title: isNew ? "¡Sub-botón Agregado y Publicado!" : "¡Sub-botón Actualizado y Publicado!",
+                text: `La sub-opción "${labelVal}" ha sido guardada y publicada en línea en el menú desplegable.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -2277,9 +2293,9 @@ class AdminComponent {
                                             <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
                                             ${item.isEnabled !== false && item.isVisible !== false ? 'Visible' : 'Oculto'}
                                         </span>
-                                        <span class="badge" style="background: ${item.isDraft !== false ? '#fffbeb' : '#dcfce7'}; color: ${item.isDraft !== false ? '#b45309' : '#15803d'}; font-size: 0.74rem; font-weight: 700; border: 1px solid ${item.isDraft !== false ? '#fef3c7' : '#bbf7d0'}; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span class="badge" style="background: ${item.isDraft === true ? '#fffbeb' : '#dcfce7'}; color: ${item.isDraft === true ? '#b45309' : '#15803d'}; font-size: 0.74rem; font-weight: 700; border: 1px solid ${item.isDraft === true ? '#fef3c7' : '#bbf7d0'}; display: inline-flex; align-items: center; gap: 4px;">
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"></circle></svg>
-                                            ${item.isDraft !== false ? 'Borrador' : 'Publicado'}
+                                            ${item.isDraft === true ? 'Borrador' : 'Publicado en Línea'}
                                         </span>
                                         ${item.buttonText ? `
                                             <span class="badge" style="background: rgba(23, 55, 137, 0.08); color: var(--colua-navy); font-size: 0.74rem; font-weight: 600;">
@@ -3120,15 +3136,14 @@ class AdminComponent {
                     ${typeSpecificHtml}
 
                     <!-- Estados Globales de Publicación -->
-                    <div style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 600; color: var(--colua-gray-800); cursor: pointer;">
                             <input type="checkbox" id="item-enabled" ${currentData.isEnabled !== false && currentData.isVisible !== false ? 'checked' : ''} style="width: 18px; height: 18px;" />
-                            <span>Elemento Activo / Publicado en la web</span>
+                            <span>Elemento Activo / Visible en la web</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; color: #b45309; cursor: pointer;">
-                            <input type="checkbox" id="item-is-draft" ${currentData.isDraft === true ? 'checked' : ''} style="width: 18px; height: 18px;" />
-                            <span>Guardar como Borrador (No visible para usuarios públicos)</span>
-                        </label>
+                        <span style="font-size: 0.74rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 3px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #bbf7d0;">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span> Auto-publicación en vivo
+                        </span>
                     </div>
 
                     <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--colua-gray-200); padding-top: 14px;">
@@ -3504,10 +3519,23 @@ class AdminComponent {
                     textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
                     isEnabled: isEnabledVal,
                     isVisible: isEnabledVal,
-                    isDraft: isDraftVal,
-                    isPublished: !isDraftVal,
+                    isDraft: false,
+                    isPublished: true,
                     lastModified: Date.now()
                 };
+
+                // Si la tarjeta pertenece a la sección de noticias, asegurar campos esenciales para renderizar en Noticias
+                const secClean = (targetSecVal || '').toLowerCase();
+                if (secClean === 'sec_noticias' || secClean === 'noticias' || (currentData.id || '').startsWith('news_')) {
+                    if (!updated.publicationDate && !updated.date && !updated.fecha) {
+                        updated.publicationDate = new Date().toISOString();
+                    }
+                    if (!updated.issuerName) updated.issuerName = 'Cooperativa COLUA R.L.';
+                    if (!updated.issuerRole) updated.issuerRole = 'Comunicación Oficial';
+                    if (!updated.tags) updated.tags = '#COLUA';
+                    updated.likesCount = Number(updated.likesCount) || 0;
+                    updated.sharesCount = Number(updated.sharesCount) || 0;
+                }
 
                 await coluaRepo.saveContentItem(updated);
 
@@ -3538,15 +3566,15 @@ class AdminComponent {
 
                 if (window.Swal) {
                     Swal.fire({
-                        title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
-                        text: `"${updated.title}" ha sido guardado exitosamente.`,
+                        title: `¡${activeTypeName} Guardado y Publicado!`,
+                        text: `"${updated.title}" ha sido guardado y publicado en línea con éxito.`,
                         icon: "success",
                         timer: 1600,
                         showConfirmButton: false,
                         draggable: true
                     });
                 } else {
-                    app.showToast(`${activeTypeName} guardado con éxito`, 'success');
+                    app.showToast(`${activeTypeName} guardado y publicado con éxito`, 'success');
                 }
                 await this.loadTabContent();
             } catch (err) {
@@ -3669,8 +3697,8 @@ class AdminComponent {
                 textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
                 isEnabled: isEnabledVal,
                 isVisible: isEnabledVal,
-                isDraft: isDraftVal,
-                isPublished: !isDraftVal,
+                isDraft: false,
+                isPublished: true,
                 lastModified: Date.now()
             };
 
@@ -3689,14 +3717,14 @@ class AdminComponent {
 
             if (window.Swal) {
                 Swal.fire({
-                    title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
-                    text: `"${updated.title}" ha sido guardado exitosamente.`,
+                    title: `¡${activeTypeName} Guardado y Publicado!`,
+                    text: `"${updated.title}" ha sido guardado y publicado en línea con éxito.`,
                     icon: "success",
                     timer: 1800,
                     showConfirmButton: false
                 });
             } else {
-                alert(`¡${updated.title} guardado con éxito!`);
+                alert(`¡${updated.title} guardado y publicado con éxito!`);
             }
 
             await this.loadTabContent();
@@ -3793,402 +3821,10 @@ class AdminComponent {
     }
 
     // ==========================================
-    // TAB 3: CENTRO DE CONTROL DE PUBLICACIÓN
+    // NOTA: El módulo de publicación manual ha sido retirado.
+    // Todas las creaciones, ediciones y eliminaciones de botones, sub-botones,
+    // pantallas y contenidos se publican automáticamente en vivo en tiempo real.
     // ==========================================
-    async renderTabSync(container) {
-        this.syncStatus = await coluaRepo.getSyncStatus();
-
-        container.innerHTML = `
-            <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;">
-                <!-- Encabezado -->
-                <div>
-                    <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 4px 0;">
-                        Centro de Control de Publicación
-                    </h2>
-                    <p style="font-size: 0.85rem; color: var(--colua-gray-600); margin: 0;">
-                        Monitorea versiones, cambios pendientes, sincronización en vivo y publicaciones atómicas.
-                    </p>
-                </div>
-
-                <!-- 1. Estado de Publicación -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-                        <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--colua-navy); margin: 0;">
-                            Estado de Publicación
-                        </h3>
-                        <span class="badge" style="background: ${this.syncStatus.draftsCount > 0 ? '#fffbeb' : '#dcfce7'}; color: ${this.syncStatus.draftsCount > 0 ? '#b45309' : '#15803d'}; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
-                            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;"></span>
-                            ${this.syncStatus.draftsCount > 0 ? 'Borradores pendientes de publicar' : `Todo publicado (${this.syncStatus.version})`}
-                        </span>
-                    </div>
-
-                    <div style="font-size: 0.86rem; color: var(--colua-gray-700); line-height: 1.65; margin-bottom: 16px;">
-                        <div><strong>Borrador local:</strong> ${this.syncStatus.version} | <strong>Publicada:</strong> ${this.syncStatus.publishedVersion}</div>
-                        <div><strong>Última sync:</strong> ${this.syncStatus.lastPublishedAt ? new Date(this.syncStatus.lastPublishedAt).toLocaleString() : 'Reciente'}</div>
-                        <div><strong>Pantallas:</strong> ${this.syncStatus.sectionsCount} | <strong>Elementos:</strong> ${this.syncStatus.itemsCount}</div>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--colua-gray-100);">
-                        <div>
-                            <span style="font-size: 0.88rem; font-weight: 700; color: var(--colua-navy); display: block;">Sincronización en Tiempo Real (Cloud)</span>
-                            <span style="font-size: 0.76rem; color: var(--colua-gray-500);">Actualiza cambios automáticamente a Firestore Cloud</span>
-                        </div>
-                        <label style="position: relative; display: inline-flex; align-items: center; width: 48px; height: 26px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="toggle-realtime-sync" ${this.syncStatus.isRealtimeEnabled !== false ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-                            <span class="switch-slider" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${this.syncStatus.isRealtimeEnabled !== false ? 'var(--colua-green)' : '#cbd5e1'}; transition: 0.3s; border-radius: 26px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);">
-                                <span class="switch-knob" style="position: absolute; content: ''; height: 20px; width: 20px; left: ${this.syncStatus.isRealtimeEnabled !== false ? '25px' : '3px'}; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 2. Cambios Pendientes de Publicar -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200);">
-                    <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 14px 0;">
-                        Cambios Pendientes de Publicar
-                    </h3>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px;">
-                        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #b45309;">Pendientes: ${this.syncStatus.draftsCount}</span>
-                        </div>
-                        <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #15803d;">Nuevos: ${this.syncStatus.newCount}</span>
-                        </div>
-                        <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #1d4ed8;">Editados: ${this.syncStatus.editCount}</span>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Incompletos: ${this.syncStatus.incompleteCount}</span>
-                        </div>
-                    </div>
-
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.82rem; color: var(--colua-gray-600);">
-                        <strong>Actividad reciente:</strong><br/>
-                        ${this.syncStatus.draftsCount === 0 ? `• No hay cambios pendientes. La versión publicada ${this.syncStatus.version} está actualizada.` : `• Hay ${this.syncStatus.draftsCount} cambios en borrador listos para desplegar a producción.`}
-                    </div>
-
-                    <button id="btn-review-changes" class="btn btn-outline" style="width: 100%; padding: 10px; font-size: 0.88rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy);">
-                        Revisar Detalle de Cambios
-                    </button>
-                </div>
-
-                <!-- 3. Borrador Local y Vista Previa -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-                    <!-- Card Borrador Local -->
-                    <div class="card" style="background: white; border-radius: 14px; padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h4 style="font-size: 1.02rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                                Borrador Local del Administrador
-                            </h4>
-                            <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                                Los borradores se guardan en este dispositivo y no son visibles para los usuarios hasta que se publiquen.
-                            </p>
-                        </div>
-                        <button id="btn-save-local-draft" class="btn btn-outline" style="width: 100%; padding: 9px; font-size: 0.85rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy);">
-                            Guardar Borrador Local
-                        </button>
-                    </div>
-
-                    <!-- Card Vista Previa -->
-                    <div class="card" style="background: white; border-radius: 14px; padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h4 style="font-size: 1.02rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                                Vista Previa General Interactiva
-                            </h4>
-                            <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                                Navega por toda la aplicación tal como la verá el usuario público, cargando todos tus cambios en borrador en vivo.
-                            </p>
-                        </div>
-                        <button id="btn-open-preview-live" class="btn" style="width: 100%; padding: 10px; font-size: 0.88rem; font-weight: 700; background: var(--colua-orange); color: white; border: none; border-radius: 10px;">
-                            Abrir Vista Previa General
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 4. Publicación Masiva -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--colua-navy);">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                        Publicación Masiva
-                    </h3>
-                    <p style="font-size: 0.84rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                        Envía de una sola vez todos los borradores pendientes a la nube para hacerlos visibles a todos los asociados.
-                    </p>
-                    <button id="publish-all-cloud-btn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 0.95rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                        ${ADMIN_ICONS.sync} <span>Publicar Todos los Cambios</span>
-                    </button>
-                </div>
-
-                <!-- 5. Acciones Avanzadas de Restauración e Integridad -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <span style="font-size: 0.76rem; font-weight: 700; color: var(--colua-gray-500); text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
-                        ${ADMIN_ICONS.shieldCheck} Acciones Avanzadas de Restauración e Integridad
-                    </span>
-
-                    <!-- Verificación e Integridad -->
-                    <div class="card" style="background: white; border-radius: 12px; padding: 16px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 3px 0;">
-                                Verificación e Integridad
-                            </h4>
-                            <p style="font-size: 0.8rem; color: var(--colua-gray-600); margin: 0;">
-                                Compara la versión local publicada con el servidor para confirmar integridad sin modificar contenido.
-                            </p>
-                        </div>
-                        <button id="btn-verify-integrity" class="btn btn-outline" style="padding: 7px 16px; font-size: 0.82rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy); flex-shrink: 0;">
-                            Verificar Publicación
-                        </button>
-                    </div>
-
-                    <!-- Reversión de Versión (Rollback) -->
-                    <div class="card" style="background: #f0f9ff; border-radius: 12px; padding: 16px 20px; border: 1px solid #bae6fd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: #0369a1; margin: 0 0 3px 0;">
-                                Reversión de Versión (Rollback)
-                            </h4>
-                            <p style="font-size: 0.8rem; color: #0c4a6e; margin: 0;">
-                                Restablecer la última versión estable aprobada ante cualquier contingencia.
-                            </p>
-                        </div>
-                        <button id="btn-rollback-version" class="btn" style="padding: 7px 18px; font-size: 0.82rem; font-weight: 600; background: #0284c7; color: white; border: none; flex-shrink: 0; border-radius: 8px;">
-                            Revertir
-                        </button>
-                    </div>
-
-                    <!-- Restaurar Datos Iniciales -->
-                    <div class="card" style="background: #fef2f2; border-radius: 12px; padding: 16px 20px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: #b91c1c; margin: 0 0 3px 0;">
-                                Restaurar Datos Iniciales
-                            </h4>
-                            <p style="font-size: 0.8rem; color: #7f1d1d; margin: 0;">
-                                Reinicio de fábrica del contenido CMS con los datos oficiales de COLUA MICOOPE.
-                            </p>
-                        </div>
-                        <button id="btn-factory-reset" class="btn" style="padding: 7px 18px; font-size: 0.82rem; font-weight: 600; background: #dc2626; color: white; border: none; flex-shrink: 0; border-radius: 8px;">
-                            Restaurar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Evento Sincronización en Tiempo Real (Cloud)
-        const toggleSync = container.querySelector('#toggle-realtime-sync');
-        if (toggleSync) {
-            toggleSync.addEventListener('change', async (e) => {
-                const isChecked = e.target.checked;
-                const slider = toggleSync.nextElementSibling;
-                const knob = slider ? slider.querySelector('.switch-knob') : null;
-                if (slider) slider.style.backgroundColor = isChecked ? 'var(--colua-green)' : '#cbd5e1';
-                if (knob) knob.style.left = isChecked ? '25px' : '3px';
-
-                await coluaRepo.updateGlobalConfig({ is_realtime_sync: isChecked });
-                Swal.fire({
-                    title: isChecked ? "Sincronización Cloud Activada" : "Sincronización Cloud Pausada",
-                    text: isChecked ? "Los cambios se sincronizarán en vivo con Firestore Cloud." : "Los cambios se guardarán localmente hasta publicar.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-            });
-        }
-
-        // Evento Guardar Borrador Local
-        container.querySelector('#btn-save-local-draft')?.addEventListener('click', () => {
-            Swal.fire({
-                title: "Borrador Guardado",
-                text: "Todos los cambios locales han sido respaldados en el almacenamiento seguro de tu navegador.",
-                icon: "success",
-                timer: 1500,
-                showConfirmButton: false,
-                draggable: true
-            });
-        });
-
-        // Evento Abrir Vista Previa General
-        container.querySelector('#btn-open-preview-live')?.addEventListener('click', async () => {
-            if (window.Swal) {
-                await Swal.fire({
-                    title: "Modo Vista Previa General",
-                    text: "Estás ingresando a la aplicación pública para visualizar todos los cambios en borrador en vivo.",
-                    icon: "info",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-            }
-            window.location.hash = '#inicio';
-        });
-
-        // Evento Revisar Detalle de Cambios
-        container.querySelector('#btn-review-changes')?.addEventListener('click', () => {
-            const list = this.syncStatus.pendingList || [];
-            const modalHtml = `
-                <div style="max-width: 500px; width: 100%;">
-                    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 6px;">
-                        Detalle de Cambios en Borrador
-                    </h3>
-                    <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin-bottom: 16px;">
-                        Elementos pendientes de publicación a producción:
-                    </p>
-
-                    <div style="max-height: 48vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-                        ${list.length === 0 ? '<p style="text-align: center; color: var(--colua-gray-500); padding: 20px;">No hay cambios pendientes de publicar.</p>' : list.map(item => `
-                            <div style="padding: 10px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <span class="badge" style="background: rgba(23, 55, 137, 0.08); color: var(--colua-navy); font-size: 0.7rem; margin-bottom: 3px; display: inline-block;">${item.type}</span>
-                                    <strong style="display: block; font-size: 0.88rem; color: var(--colua-navy);">${item.title}</strong>
-                                </div>
-                                <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700;">${item.status}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div style="text-align: right; border-top: 1px solid var(--colua-gray-200); padding-top: 12px;">
-                        <button class="btn btn-outline" onclick="app.closeModal()">Cerrar</button>
-                    </div>
-                </div>
-            `;
-            app.showModal(modalHtml);
-        });
-
-        // Evento Publicar Todos los Cambios
-        container.querySelector('#publish-all-cloud-btn')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Publicar Cambios a Producción?",
-                text: "Todos los asociados y visitantes de la aplicación verán inmediatamente la nueva versión.",
-                icon: "question",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#173789",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Publicar Ahora",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                Swal.fire({
-                    title: "Publicando...",
-                    text: "Sincronizando secciones, tarjetas y bloques a Firestore Cloud",
-                    allowOutsideClick: false,
-                    didOpen: () => { Swal.showLoading(); }
-                });
-
-                const res = await coluaRepo.publishCurrentConfiguration();
-
-                if (res.success) {
-                    Swal.fire({
-                        title: "¡Publicación Exitosa!",
-                        text: `Se ha publicado la versión ${res.version} correctamente a toda la plataforma.`,
-                        icon: "success",
-                        timer: 1800,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                    await this.loadTabContent();
-                } else {
-                    Swal.fire({
-                        title: "Error al Publicar",
-                        text: res.error || "Ocurrió un problema durante la sincronización.",
-                        icon: "error",
-                        timer: 2500,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                }
-            }
-        });
-
-        // Evento Verificar Integridad
-        container.querySelector('#btn-verify-integrity')?.addEventListener('click', async () => {
-            const ver = await coluaRepo.verifyPublicationIntegrity();
-            Swal.fire({
-                title: "Integridad Verificada: " + ver.integrity,
-                html: `
-                    <div style="text-align: left; font-size: 0.88rem; line-height: 1.7; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">
-                        <div><strong>Versión actual:</strong> ${ver.version}</div>
-                        <div><strong>Pantallas locales:</strong> ${ver.localSections}</div>
-                        <div><strong>Tarjetas de contenido:</strong> ${ver.localItems}</div>
-                        <div><strong>Bloques atómicos:</strong> ${ver.localBlocks}</div>
-                        <div><strong>Conexión Firestore Cloud:</strong> ${ver.cloudConnected ? 'Conectado y Sincronizado' : 'Modo Local / Offline'}</div>
-                    </div>
-                `,
-                icon: "success",
-                timer: 2000,
-                showConfirmButton: false,
-                draggable: true
-            });
-        });
-
-        // Evento Revertir Versión (Rollback)
-        container.querySelector('#btn-rollback-version')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Revertir a la versión anterior?",
-                text: "Se restaurará el snapshot previo a la última publicación masiva.",
-                icon: "warning",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#0284c7",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Revertir",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                const res = await coluaRepo.rollbackToPreviousVersion();
-                if (res.success) {
-                    Swal.fire({
-                        title: "¡Versión Revertida!",
-                        text: `Se ha restablecido la plataforma a la versión ${res.version}.`,
-                        icon: "success",
-                        timer: 1500,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                    await this.loadTabContent();
-                } else {
-                    Swal.fire({
-                        title: "No se pudo revertir",
-                        text: res.error || "No hay respaldo previo registrado.",
-                        icon: "info",
-                        timer: 2000,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                }
-            }
-        });
-
-        // Evento Restaurar Datos Iniciales (Factory Reset)
-        container.querySelector('#btn-factory-reset')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Restaurar Datos de Fábrica?",
-                text: "Esta acción reiniciará todas las secciones, productos y tarjetas a sus valores predeterminados de la cooperativa. (Los usuarios se conservarán).",
-                icon: "warning",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#dc2626",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Restaurar Todo",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                await coluaRepo.resetToFactoryDefaults();
-                Swal.fire({
-                    title: "¡Contenidos Restaurados!",
-                    text: "Se han reestablecido los datos oficiales de fábrica de COLUA MICOOPE.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-                await this.loadTabContent();
-            }
-        });
-    }
 
     // ==========================================
     // TAB 4: USUARIOS Y ROLES (RBAC)
@@ -5266,8 +4902,8 @@ class AdminComponent {
 
                         <div style="font-size: 0.86rem; color: var(--colua-gray-700); line-height: 1.7; display: flex; flex-direction: column; gap: 12px;">
                             <div>
-                                <strong style="color: var(--colua-navy);">• Pestaña Publicar y Verificación:</strong><br/>
-                                El Centro de Control muestra la versión actual (ej. v33 local vs v32 publicada) y el botón 'Revisar Detalle de Cambios' para auditoría previa antes del despliegue masivo.
+                                <strong style="color: var(--colua-navy);">• Publicación Automática en Tiempo Real:</strong><br/>
+                                Cada sección, botón del menú superior, sub-botón o elemento de contenido se guarda y publica automáticamente a toda la plataforma en tiempo real tan pronto como se crea o edita.
                             </div>
 
                             <div>
