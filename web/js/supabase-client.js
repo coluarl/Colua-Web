@@ -182,7 +182,29 @@ class SupabaseStorageManager {
 
       onProgress('Verificando respaldo en la nube...');
 
-      // 2. Intentar subir a Supabase Storage si está disponible
+      // 2. Intentar subir a Firebase Storage si está disponible (enlace público universal)
+      try {
+        const fbStorage = window.firebaseClient && window.firebaseClient.storage;
+        if (fbStorage) {
+          onProgress('Subiendo documento a Firebase Cloud Storage...');
+          const storageRef = fbStorage.ref().child(`documentos/${fileName}`);
+          const snapshot = await storageRef.put(file);
+          const downloadUrl = await snapshot.ref.getDownloadURL();
+          console.log(`✓ PDF subido exitosamente a Firebase Storage: ${downloadUrl}`);
+          return {
+            success: true,
+            url: downloadUrl,
+            docKey: docKey,
+            type: 'cloud',
+            fileName: file.name,
+            fileSize: file.size
+          };
+        }
+      } catch (fbErr) {
+        console.warn('[Storage] Firebase Storage no disponible o requiere autenticación:', fbErr.message);
+      }
+
+      // 3. Intentar subir a Supabase Storage si está disponible
       for (const bucket of this.buckets) {
         try {
           const uploadEndpoint = `${this.url}/storage/v1/object/${bucket}/${fileName}`;
@@ -214,9 +236,9 @@ class SupabaseStorageManager {
         }
       }
 
-      // 3. Si no sube a la nube, la URL es la referencia limpia a IndexedDB (solo 30 caracteres)
+      // 4. Si no sube a la nube, la URL es la referencia local a IndexedDB
       const localDocUrl = 'indexeddb:' + docKey;
-      console.log('✓ PDF listo en almacenamiento seguro del sistema:', localDocUrl);
+      console.log('✓ PDF listo en almacenamiento local del sistema:', localDocUrl);
       return {
         success: true,
         url: localDocUrl,
@@ -229,6 +251,59 @@ class SupabaseStorageManager {
     } catch (e) {
       console.error('Error al procesar PDF:', e);
       return { success: false, error: e.message };
+    }
+  }
+
+  // Generador universal de miniaturas / portadas de la primera hoja de un archivo PDF
+  async generatePdfThumbnail(fileOrBlobOrUrl, targetWidth = 600, quality = 0.85) {
+    if (typeof pdfjsLib === 'undefined') {
+      console.warn('[PDF.js] Librería pdfjsLib no cargada.');
+      return null;
+    }
+    try {
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      let loadingTask;
+      if (fileOrBlobOrUrl instanceof Blob) {
+        const arrayBuffer = await fileOrBlobOrUrl.arrayBuffer();
+        loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      } else if (typeof fileOrBlobOrUrl === 'string' && fileOrBlobOrUrl.startsWith('indexeddb:')) {
+        const docId = fileOrBlobOrUrl.replace('indexeddb:', '').trim();
+        const rec = window.ColuaPdfStore ? await window.ColuaPdfStore.getPdf(docId) : null;
+        if (!rec || !rec.blob) return null;
+        let rawBlob = rec.blob;
+        if (!(rawBlob instanceof Blob)) {
+          rawBlob = new Blob([rawBlob], { type: 'application/pdf' });
+        }
+        const arrayBuffer = await rawBlob.arrayBuffer();
+        loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      } else {
+        loadingTask = pdfjsLib.getDocument(fileOrBlobOrUrl);
+      }
+
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+      const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+      const scale = targetWidth / unscaledViewport.width;
+      const viewport = page.getViewport({ scale: scale > 0 ? scale : 1.0 });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const context = canvas.getContext('2d');
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+
+      return canvas.toDataURL('image/jpeg', quality);
+    } catch (err) {
+      console.warn('[PDF.js] Error al generar portada de la primera hoja del PDF:', err);
+      return null;
     }
   }
 
@@ -288,12 +363,137 @@ class SupabaseStorageManager {
     if (clean.startsWith('assets/')) return clean;
     return `assets/${clean}.png`;
   }
+
+  // Enviar y registrar solicitud / lead directamente en la base de datos de Supabase (PostgREST)
+  async submitLeadToSupabase(leadData) {
+    if (!this.url || !this.key) {
+      console.warn('[Supabase DB] Credenciales no configuradas para base de datos.');
+      return { success: false, error: 'Credenciales incompletas' };
+    }
+
+    const timestamp = new Date().toISOString();
+    const cleanLeadId = leadData.id || ('lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+
+    // Estructura completa y universal para compatibilidad con cualquier esquema de tabla
+    const payload = {
+      id: cleanLeadId,
+      form_id: leadData.formId || 'form_asociate',
+      form_title: leadData.formTitle || 'Solicitud de Asociación',
+      nombre: leadData.nombre || '',
+      telefono: leadData.telefono || '',
+      email: leadData.email || '',
+      dpi: leadData.dpi || '',
+      foto_dpi_frente: leadData.fotoDpiFrente || '',
+      foto_dpi_reverso: leadData.fotoDpiReverso || '',
+      foto_recibo_luz: leadData.fotoRecibo || '',
+      foto_recibo: leadData.fotoRecibo || '',
+      foto_pago: leadData.fotoPago || '',
+      agencia: leadData.agenciaPreferida || 'Sololá Central',
+      agencia_preferida: leadData.agenciaPreferida || 'Sololá Central',
+      metodo_pago: leadData.metodoPago || 'Efectivo en Agencia',
+      estado: leadData.estado || 'Pendiente',
+      comentarios: leadData.comentarios || '',
+      respuestas: leadData.respuestas || {},
+      created_at: timestamp,
+      fecha_local: leadData.fechaStr || new Date().toLocaleString()
+    };
+
+    // Tablas candidatas en Supabase donde se puede registrar la solicitud
+    const candidateTables = ['solicitudes_asociarse', 'solicitudes', 'form_submissions', 'leads'];
+
+    for (const tableName of candidateTables) {
+      try {
+        const endpoint = `${this.url}/rest/v1/${tableName}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'apikey': this.key,
+            'Authorization': `Bearer ${this.key}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const result = await response.json().catch(() => ({ status: 'created' }));
+          console.log(`✓ [Supabase DB] Solicitud guardada exitosamente en tabla '${tableName}':`, result);
+          return { success: true, table: tableName, data: result };
+        } else {
+          const errText = await response.text();
+          // Si el error es por columnas que no existen en el esquema específico del usuario:
+          if (response.status === 400 && (errText.includes('Could not find the') || errText.includes('column') || errText.includes('PGRST204'))) {
+            // Intentar con payload simplificado de columnas mínimas estándar
+            const simplifiedPayload = {
+              nombre: payload.nombre,
+              telefono: payload.telefono,
+              email: payload.email,
+              dpi: payload.dpi,
+              comentarios: payload.comentarios,
+              estado: payload.estado,
+              created_at: payload.created_at
+            };
+            const retryRes = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'apikey': this.key,
+                'Authorization': `Bearer ${this.key}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(simplifiedPayload)
+            });
+            if (retryRes.ok) {
+              const resData = await retryRes.json().catch(() => ({ status: 'created' }));
+              console.log(`✓ [Supabase DB] Solicitud guardada (simplificada) en tabla '${tableName}':`, resData);
+              return { success: true, table: tableName, data: resData };
+            }
+          }
+          console.warn(`[Supabase DB] Intento en tabla '${tableName}' falló (${response.status}):`, errText);
+        }
+      } catch (err) {
+        console.warn(`[Supabase DB] Error de red en tabla '${tableName}':`, err.message);
+      }
+    }
+
+    return { success: false, error: 'No se pudo insertar en tablas de Supabase' };
+  }
 }
 
 window.supabaseStorageManager = new SupabaseStorageManager();
+window.generatePdfThumbnail = function(fileOrBlobOrUrl, targetWidth = 600, quality = 0.85) {
+  if (window.supabaseStorageManager && window.supabaseStorageManager.generatePdfThumbnail) {
+    return window.supabaseStorageManager.generatePdfThumbnail(fileOrBlobOrUrl, targetWidth, quality);
+  }
+  return null;
+};
+
+// Control de bloqueo contra clics dobles simultáneos
+let _isPdfOpening = false;
+
+// Helper para abrir un enlace exactamente una sola vez en nueva pestaña
+function _triggerSingleOpen(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 200);
+}
 
 // Visualizador universal de documentos PDF en una nueva pestaña del navegador
 window.openPdfDocument = async function(pdfUrl, title = 'Documento Oficial COLUA', itemId = null) {
+  // 1. Debounce guard: Ignorar si ya se está abriendo el PDF en este instante
+  if (_isPdfOpening) {
+    console.log('[ColuaPDF] Ignorando clic duplicado.');
+    return;
+  }
+  _isPdfOpening = true;
+  setTimeout(() => { _isPdfOpening = false; }, 800);
+
   let cleanUrl = (pdfUrl || '').trim();
 
   // Si no se proporcionó pdfUrl o viene vacío pero hay itemId, buscar en el repositorio
@@ -344,78 +544,38 @@ window.openPdfDocument = async function(pdfUrl, title = 'Documento Oficial COLUA
         }
 
         const blobUrl = URL.createObjectURL(finalBlob);
-        const fileName = (record.name || title || 'documento_oficial_colua').replace(/\.pdf$/i, '') + '.pdf';
-
-        // Intento 1: abrir en nueva ventana
-        const newWin = window.open(blobUrl, '_blank');
-        
-        // Si el navegador bloqueó la ventana emergente asíncrona
-        if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => { document.body.removeChild(a); }, 300);
-
-          // Aviso amigable con enlace directo en caso de bloqueo estricto del navegador
-          if (window.Swal) {
-            Swal.fire({
-              title: title || 'Documento Oficial',
-              text: 'Tu navegador bloqueó la apertura automática de la nueva pestaña.',
-              icon: 'info',
-              confirmButtonText: 'Abrir PDF en Nueva Pestaña ↗',
-              confirmButtonColor: '#dc2626',
-              showCancelButton: true,
-              cancelButtonText: 'Descargar PDF',
-              cancelButtonColor: '#173789'
-            }).then((result) => {
-              if (result.isConfirmed) {
-                window.open(blobUrl, '_blank');
-              } else if (result.dismiss === Swal.DismissReason.cancel) {
-                const dl = document.createElement('a');
-                dl.href = blobUrl;
-                dl.download = fileName;
-                document.body.appendChild(dl);
-                dl.click();
-                setTimeout(() => { document.body.removeChild(dl); }, 300);
-              }
-            });
-          }
-        }
+        _triggerSingleOpen(blobUrl);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
         return;
       } else {
         console.warn(`[ColuaPdfStore] Documento ${docId} no encontrado en IndexedDB`);
         if (window.Swal) {
           Swal.fire({
-            title: 'Documento no encontrado',
-            text: 'El archivo PDF no está disponible en este navegador. Puedes volver a cargarlo desde el Portal Administrativo.',
+            title: 'Documento disponible solo en el dispositivo de origen',
+            html: `<div style="text-align: left; font-size: 0.9rem; line-height: 1.5; color: #334155;">
+                     <p>Este archivo PDF se guardó únicamente en el navegador de la computadora donde se cargó.</p>
+                     <p style="background: #f1f5f9; padding: 10px; border-radius: 8px; font-size: 0.82rem; color: #475569;">
+                       💡 <strong>Para que esté disponible en celulares y cualquier equipo:</strong> Sube el archivo a Google Drive / OneDrive o a la nube, y coloca el enlace público en el Portal Administrativo.
+                     </p>
+                   </div>`,
             icon: 'warning',
-            confirmButtonColor: '#173789'
+            confirmButtonColor: '#173789',
+            confirmButtonText: 'Entendido'
           });
         } else {
-          alert('El archivo PDF no se encuentra en el almacenamiento local.');
+          alert('El archivo PDF no se encuentra disponible en este dispositivo.');
         }
         return;
       }
     } catch (err) {
       console.error('[ColuaPDF] Error al abrir PDF de IndexedDB:', err);
+      return;
     }
   }
 
   // 2. Si es una URL web externa o en la nube (http/https)
   if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
-    const newWindow = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
-    if (!newWindow) {
-      const link = document.createElement('a');
-      link.href = cleanUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => { document.body.removeChild(link); }, 300);
-    }
+    _triggerSingleOpen(cleanUrl);
     return;
   }
 
@@ -431,25 +591,16 @@ window.openPdfDocument = async function(pdfUrl, title = 'Documento Oficial COLUA
       }
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(blob);
-      
-      const newWin = window.open(blobUrl, '_blank');
-      if (!newWin) {
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); }, 300);
-      }
+      _triggerSingleOpen(blobUrl);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (e) {
       console.error('[ColuaPDF] Error al procesar Base64:', e);
-      window.open(cleanUrl, '_blank');
+      _triggerSingleOpen(cleanUrl);
     }
     return;
   }
 
   // 4. Enlace relativo a assets
-  window.open(cleanUrl, '_blank');
+  _triggerSingleOpen(cleanUrl);
 };
 

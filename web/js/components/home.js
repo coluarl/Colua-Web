@@ -45,63 +45,101 @@ class HomeComponent {
       console.error('Error cargando secciones en Home:', e);
     }
 
-    // 2. Tarjetas canónicas base aseguradas (10 pantallas fijas)
+    // 2. Tarjetas canónicas base aseguradas (11 pantallas fijas)
     const canonicalBaseCards = [
-      { id: "home_ahorro", title: "Ahorros", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", iconName: "ahorros", targetSectionId: "sec_ahorros", imageUrl: "assets/ahorros.png" },
-      { id: "home_credito", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", iconName: "credito", targetSectionId: "sec_creditos", imageUrl: "assets/credito.png" },
-      { id: "home_seguros", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", iconName: "seguro", targetSectionId: "sec_seguros", imageUrl: "assets/seguro.png" },
-      { id: "home_remesas", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", iconName: "remesa", targetSectionId: "sec_remesas", imageUrl: "assets/remesa.png" },
-      { id: "home_beneficios", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", iconName: "beneficios", targetSectionId: "sec_beneficios", imageUrl: "assets/beneficios.png" },
-      { id: "home_agencias", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", iconName: "ubicacion", targetSectionId: "sec_agencias", imageUrl: "assets/ubicacion.png" },
-      { id: "home_servicios", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", iconName: "servicios_digitales", targetSectionId: "sec_servicios", imageUrl: "assets/servicios_digitales.png" },
-      { id: "home_noticias", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", iconName: "noticias_colua", targetSectionId: "sec_noticias", imageUrl: "assets/noticias.png" },
-      { id: "home_sostenibilidad", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png" },
-      { id: "home_nosotros", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", iconName: "public_service", targetSectionId: "sec_nosotros", imageUrl: "assets/distintivo_colua.png" }
+      { id: "home_asociate", title: "Como asociarte", subtitle: "DPI, Recibo de Luz, Q100.00", description: "DPI, Recibo de Luz, Q100.00", iconName: "ahorros", targetSectionId: "form:form_asociate", buttonAction: "form:form_asociate", imageUrl: "assets/ahorros.png", displayOrder: 1, orderIndex: 1 },
+      { id: "home_ahorro", title: "Cuentas de Ahorros Infantil y Juvenil", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", iconName: "ahorros", targetSectionId: "sec_ahorros", buttonAction: "sec_ahorros", imageUrl: "assets/ahorros.png", displayOrder: 2, orderIndex: 2 },
+      { id: "home_credito", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", iconName: "credito", targetSectionId: "sec_creditos", buttonAction: "sec_creditos", imageUrl: "assets/credito.png", displayOrder: 3, orderIndex: 3 },
+      { id: "home_seguros", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", iconName: "seguro", targetSectionId: "sec_seguros", buttonAction: "sec_seguros", imageUrl: "assets/seguro.png", displayOrder: 4, orderIndex: 4 },
+      { id: "home_remesas", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", iconName: "remesa", targetSectionId: "sec_remesas", buttonAction: "sec_remesas", imageUrl: "assets/remesa.png", displayOrder: 5, orderIndex: 5 },
+      { id: "home_beneficios", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", iconName: "beneficios", targetSectionId: "sec_beneficios", buttonAction: "sec_beneficios", imageUrl: "assets/beneficios.png", displayOrder: 6, orderIndex: 6 },
+      { id: "home_agencias", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", iconName: "ubicacion", targetSectionId: "sec_agencias", buttonAction: "sec_agencias", imageUrl: "assets/ubicacion.png", displayOrder: 7, orderIndex: 7 },
+      { id: "home_servicios", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", iconName: "servicios_digitales", targetSectionId: "sec_servicios", buttonAction: "sec_servicios", imageUrl: "assets/servicios_digitales.png", displayOrder: 8, orderIndex: 8 },
+      { id: "home_noticias", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", iconName: "noticias_colua", targetSectionId: "sec_noticias", buttonAction: "sec_noticias", imageUrl: "assets/noticias.png", displayOrder: 9, orderIndex: 9 },
+      { id: "home_sostenibilidad", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", buttonAction: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png", displayOrder: 10, orderIndex: 10 },
+      { id: "home_nosotros", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", iconName: "public_service", targetSectionId: "sec_nosotros", buttonAction: "sec_nosotros", imageUrl: "assets/distintivo_colua.png", displayOrder: 11, orderIndex: 11 }
     ];
 
-    // 3. Tarjetas activas registradas en sec_home (excluyendo cabecera y banners)
-    let displayCards = [];
+    // 3. Generación limpia de tarjetas de Inicio basadas en las 11 pantallas canónicas
+    const displayCards = [];
     const usedTargetSections = new Set();
 
-    if (homeItems && homeItems.length > 0) {
-      const activeHomeItems = homeItems.filter(i => 
-        i.isEnabled !== false && 
-        i.isVisible !== false && 
-        i.isDraft !== true && 
-        i.id !== 'home_hero_header' &&
-        !i.id.startsWith('home_banner_') && 
-        !i.id.startsWith('home_simulador_')
+    canonicalBaseCards.forEach(base => {
+      const tgt = (base.targetSectionId || '').toLowerCase();
+      // Buscar si existe personalización válida en homeItems
+      const customItem = (homeItems || []).find(i =>
+        i && (i.id === base.id || (i.targetSectionId && i.targetSectionId.toLowerCase() === tgt))
       );
-      activeHomeItems.forEach(item => {
-        displayCards.push(item);
-        const tgt = item.targetSectionId || item.id || '';
-        if (tgt) usedTargetSections.add(tgt.toLowerCase());
+
+      const mergedCard = { ...base };
+      if (customItem && customItem.isEnabled !== false && customItem.isVisible !== false && customItem.isDraft !== true) {
+        if (customItem.title && !customItem.title.toLowerCase().includes('formulario de consultas') && !customItem.title.toLowerCase().includes('consultas y solicitud')) {
+          mergedCard.title = customItem.title;
+        }
+        if (customItem.subtitle && !customItem.subtitle.toLowerCase().includes('directamente a la administración')) {
+          mergedCard.subtitle = customItem.subtitle;
+        }
+        if (customItem.imageUrl && base.id !== 'home_asociate') {
+          mergedCard.imageUrl = customItem.imageUrl;
+        }
+      }
+
+      // En caso de Como asociarte, forzar siempre la información canónica correcta
+      if (base.id === 'home_asociate') {
+        mergedCard.title = 'Como asociarte';
+        mergedCard.subtitle = 'DPI, Recibo de Luz, Q100.00';
+        mergedCard.description = 'DPI, Recibo de Luz, Q100.00';
+        mergedCard.imageUrl = 'assets/ahorros.png';
+        mergedCard.iconName = 'ahorros';
+        mergedCard.targetSectionId = 'form:form_asociate';
+        mergedCard.buttonAction = 'form:form_asociate';
+        mergedCard.displayOrder = 1;
+      }
+
+      displayCards.push(mergedCard);
+      usedTargetSections.add(tgt);
+      usedTargetSections.add(base.id.toLowerCase());
+    });
+
+    // 4. Agregar de forma controlada elementos personalizados legítimos adicionales de sec_home (si fueron creados por admin)
+    if (homeItems && homeItems.length > 0) {
+      const extraItems = homeItems.filter(i =>
+        i &&
+        i.isEnabled !== false &&
+        i.isVisible !== false &&
+        i.isDraft !== true &&
+        i.id !== 'home_hero_header' &&
+        !i.id.startsWith('home_banner_') &&
+        !i.id.startsWith('home_simulador_') &&
+        i.id !== 'home_asociate' &&
+        i.targetSectionId !== 'form:form_asociate' &&
+        i.buttonAction !== 'form:form_asociate' &&
+        !(i.title || '').toLowerCase().includes('formulario de consultas') &&
+        !(i.title || '').toLowerCase().includes('consultas y solicitud') &&
+        !(i.subtitle || '').toLowerCase().includes('directamente a la administración')
+      );
+
+      extraItems.forEach(item => {
+        const itemTgt = (item.targetSectionId || item.id || '').toLowerCase();
+        if (!usedTargetSections.has(itemTgt) && !usedTargetSections.has((item.id || '').toLowerCase())) {
+          displayCards.push(item);
+          usedTargetSections.add(itemTgt);
+        }
       });
     }
 
-    // 4. Asegurar que las 10 tarjetas canónicas estén representadas
-    canonicalBaseCards.forEach(base => {
-      const tgt = base.targetSectionId.toLowerCase();
-      const hasCard = displayCards.some(c => 
-        (c.targetSectionId && c.targetSectionId.toLowerCase() === tgt) ||
-        (c.id && c.id.toLowerCase() === base.id.toLowerCase()) ||
-        (c.id && c.id.toLowerCase() === tgt)
-      );
-      if (!hasCard) {
-        displayCards.push(base);
-        usedTargetSections.add(tgt);
-      }
-    });
-
-    // 5. Incluir dinámicamente cualquier NUEVA pantalla/sección creada en el CMS (la 11va, 12va, etc.)
+    // 5. Incluir dinámicamente cualquier NUEVA pantalla/sección creada en el CMS (excluyendo bolsa de empleo y privadas)
     if (allSections && allSections.length > 0) {
       allSections.forEach(sec => {
         if (
-          sec.id === 'sec_home' || 
-          sec.slug === 'home' || 
-          sec.id === 'sec_comunidad' || 
+          !sec ||
+          sec.id === 'sec_home' ||
+          sec.slug === 'home' ||
+          sec.id === 'sec_comunidad' ||
           sec.slug === 'comunidad' ||
-          sec.isVisible === false || 
+          sec.id === 'sec_empleo' ||
+          sec.slug === 'empleo' ||
+          sec.isVisible === false ||
           sec.isEnabled === false ||
           sec.menuPlacement === 'hidden'
         ) {
@@ -134,7 +172,7 @@ class HomeComponent {
 
     // Hero, Banners y Simulación dinámicos desde sec_home
     const heroItem = homeItems.find(i => i.id === 'home_hero_header');
-    const heroTitle = heroItem?.title || 'Hola, bienvenido a <span class="brand-blue-accent">COLUA MICOOPE</span>';
+    const heroTitle = heroItem?.title || 'Hola, bienvenido a COLUA MICOOPE';
     const heroSubtitle = heroItem?.subtitle || 'El lado humano de los ahorros y créditos cooperativos. Selecciona un área para comenzar tu gestión.';
 
     const pbxItem = homeItems.find(i => i.id === 'home_banner_pbx');
@@ -168,74 +206,91 @@ class HomeComponent {
              ============================================== -->
         <section class="clean-cards-grid" aria-label="Áreas de Gestión Cooperativa">
           ${displayCards.map(s => {
-            const rawRoute = (s.buttonAction || s.targetSectionId || s.id || '').trim();
-            const isPdf = s.type === 'pdf_document' || rawRoute.startsWith('pdf:') || rawRoute.includes('indexeddb:') || (s.pdfUrl && s.pdfUrl.length > 0);
-            const isFormModal = !isPdf && (rawRoute.startsWith('form:') || rawRoute === 'modal:form' || rawRoute === 'form_asociate' || s.id === 'home_asociate' || (s.title || '').toLowerCase().includes('asociarte'));
-            const isInfoModal = !isPdf && !isFormModal && (rawRoute === 'modal:info' || rawRoute === 'info_modal' || s.buttonAction === 'modal:info');
+      const rawRoute = (s.buttonAction || s.targetSectionId || s.id || '').trim();
+      const isPdf = s.type === 'pdf_document' || rawRoute.startsWith('pdf:') || rawRoute.includes('indexeddb:') || (s.pdfUrl && s.pdfUrl.length > 0);
+      const isFormModal = !isPdf && (rawRoute.startsWith('form:') || rawRoute === 'modal:form' || rawRoute === 'form_asociate' || s.id === 'home_asociate' || (s.title || '').toLowerCase().includes('asociarte'));
+      const isInfoModal = !isPdf && !isFormModal && (rawRoute === 'modal:info' || rawRoute === 'info_modal' || s.buttonAction === 'modal:info');
 
-            let targetRoute = rawRoute;
-            if (!isInfoModal && !isFormModal && !isPdf) {
-              if (rawRoute.startsWith('http') || rawRoute.startsWith('tel:') || rawRoute.startsWith('#') || rawRoute.startsWith('sec_')) {
-                targetRoute = rawRoute;
-              } else if (rawRoute.startsWith('home_')) {
-                targetRoute = rawRoute.replace('home_', 'sec_');
-              } else if (s.targetSectionId && (s.targetSectionId.startsWith('sec_') || s.targetSectionId.startsWith('#'))) {
-                targetRoute = s.targetSectionId;
-              } else if (s.id && s.id.startsWith('sec_')) {
-                targetRoute = s.id;
-              } else {
-                targetRoute = s.targetSectionId || 'sec_ahorros';
-              }
-            }
+      let targetRoute = rawRoute;
+      if (!isInfoModal && !isFormModal && !isPdf) {
+        if (rawRoute.startsWith('http') || rawRoute.startsWith('tel:') || rawRoute.startsWith('#') || rawRoute.startsWith('sec_')) {
+          targetRoute = rawRoute;
+        } else if (rawRoute.startsWith('home_')) {
+          targetRoute = rawRoute.replace('home_', 'sec_');
+        } else if (s.targetSectionId && (s.targetSectionId.startsWith('sec_') || s.targetSectionId.startsWith('#'))) {
+          targetRoute = s.targetSectionId;
+        } else if (s.id && s.id.startsWith('sec_')) {
+          targetRoute = s.id;
+        } else {
+          targetRoute = s.targetSectionId || 'sec_ahorros';
+        }
+      }
 
-            const iconImg = s.imageUrl || iconMap[s.id] || iconMap[s.iconName] || iconMap[s.targetSectionId] || 'assets/distintivo_colua.png';
-            
-            let clickAction = '';
-            if (isPdf) {
-              const pUrl = s.pdfUrl || (rawRoute.startsWith('pdf:') ? rawRoute.replace(/^pdf:/, '') : rawRoute);
-              clickAction = `window.openPdfDocument ? window.openPdfDocument('${pUrl}', '${(s.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${s.id}') : (window.app && window.app.openItemPdf ? window.app.openItemPdf('${s.id}', '${pUrl}') : null)`;
-            } else if (isFormModal) {
-              const fId = rawRoute.replace('form:', '').trim() || 'form_asociate';
-              clickAction = `app.showDynamicFormModal ? app.showDynamicFormModal('${fId}') : null`;
-            } else if (isInfoModal) {
-              clickAction = `app.showItemInfoModal ? app.showItemInfoModal('${s.id}') : (window.location.hash='#${s.targetSectionId || s.id}')`;
-            } else if (targetRoute.startsWith('http')) {
-              clickAction = `window.open('${targetRoute}', '_blank')`;
-            } else if (targetRoute.startsWith('tel:')) {
-              clickAction = `window.location.href='${targetRoute}'`;
-            } else if (targetRoute.startsWith('#')) {
-              clickAction = `window.location.hash='${targetRoute}'`;
-            } else {
-              clickAction = `window.coluaRouter ? window.coluaRouter.navigate('${targetRoute}') : (window.location.hash='#${targetRoute}')`;
-            }
+      let clickAction = '';
+      if (isPdf) {
+        const pUrl = s.pdfUrl || (rawRoute.startsWith('pdf:') ? rawRoute.replace(/^pdf:/, '') : rawRoute);
+        clickAction = `window.openPdfDocument ? window.openPdfDocument('${pUrl}', '${(s.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${s.id}') : (window.app && window.app.openItemPdf ? window.app.openItemPdf('${s.id}', '${pUrl}') : null)`;
+      } else if (isFormModal) {
+        const fId = rawRoute.replace('form:', '').trim() || 'form_asociate';
+        clickAction = `app.showDynamicFormModal ? app.showDynamicFormModal('${fId}') : null`;
+      } else if (isInfoModal) {
+        clickAction = `app.showItemInfoModal ? app.showItemInfoModal('${s.id}') : (window.location.hash='#${s.targetSectionId || s.id}')`;
+      } else if (targetRoute.startsWith('http')) {
+        clickAction = `window.open('${targetRoute}', '_blank')`;
+      } else if (targetRoute.startsWith('tel:')) {
+        clickAction = `window.location.href='${targetRoute}'`;
+      } else if (targetRoute.startsWith('#')) {
+        clickAction = `window.location.hash='${targetRoute}'`;
+      } else {
+        clickAction = `window.coluaRouter ? window.coluaRouter.navigate('${targetRoute}') : (window.location.hash='#${targetRoute}')`;
+      }
 
-            let cardTitle = (s.title || '').trim();
-            let cardSubtitle = (s.subtitle || s.description || s.shortDescription || '').trim();
+      let cardTitle = (s.title || '').trim();
+      let cardSubtitle = (s.subtitle || s.description || s.shortDescription || '').trim();
 
-            const lowerTitle = cardTitle.toLowerCase();
-            const lowerSub = cardSubtitle.toLowerCase();
-            const rawId = (s.id || '').toLowerCase();
-            // Sanitizar solo si contiene strings residuales de versiones anteriores
-            if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorroahorro') || lowerTitle.includes('ahorro infantil')) {
-              cardTitle = cardTitle.includes('ahorro infantil') ? 'Ahorros' : cardTitle.replace(/ahorroahorro/gi, 'Ahorros');
-              if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorro infantil')) cardSubtitle = 'Cuentas de ahorro';
-            } else if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('créditocrédito') || lowerTitle.includes('productivo, consumo')) {
-              cardTitle = cardTitle.includes('productivo, consumo') ? 'Créditos' : cardTitle.replace(/créditocrédito/gi, 'Créditos');
-              if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('productivo, consumo')) cardSubtitle = 'Líneas de crédito';
-            } else if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros de vida seguros') || lowerTitle.includes('seguros médicos')) {
-              cardTitle = cardTitle.includes('seguros médicos') ? 'Seguros' : cardTitle.replace(/seguros de vida seguros/gi, 'Seguros');
-              if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros médicos')) cardSubtitle = 'Protección y vida';
-            } else if (lowerSub.includes('remesa!') || lowerTitle.includes('remesas dirigidas')) {
-              cardTitle = cardTitle.replace(/remesas dirigidas/gi, 'Remesas');
-              if (lowerSub.includes('remesa!')) cardSubtitle = 'Recibe tu dinero';
-            }
+      const lowerTitle = cardTitle.toLowerCase();
+      const lowerSub = cardSubtitle.toLowerCase();
+      const rawId = (s.id || '').toLowerCase();
 
-            return `
+      // Normalizar 'Como asociarte' garantizando que jamás muestre textos de formulario administrativo o flor
+      if (
+        rawId === 'home_asociate' ||
+        rawRoute === 'form:form_asociate' ||
+        rawRoute === 'form_asociate' ||
+        lowerTitle.includes('formulario de consultas') ||
+        lowerTitle.includes('consultas y solicitud') ||
+        lowerSub.includes('directamente a la administración')
+      ) {
+        cardTitle = 'Como asociarte';
+        cardSubtitle = 'DPI, Recibo de Luz, Q100.00';
+      }
+
+      let iconImg = s.imageUrl || iconMap[s.id] || iconMap[s.iconName] || iconMap[s.targetSectionId] || 'assets/distintivo_colua.png';
+      if (rawId === 'home_asociate' || rawRoute.includes('form_asociate') || cardTitle.toLowerCase().includes('asociarte') || lowerTitle.includes('formulario de consultas')) {
+        iconImg = 'assets/ahorros.png';
+      }
+
+      // Sanitizar solo si contiene strings residuales de versiones anteriores
+      if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorroahorro')) {
+        cardTitle = cardTitle.replace(/ahorroahorro/gi, 'Ahorros');
+        if (lowerSub.includes('ahorro!')) cardSubtitle = 'Cuentas de ahorro';
+      } else if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('créditocrédito') || lowerTitle.includes('productivo, consumo')) {
+        cardTitle = cardTitle.includes('productivo, consumo') ? 'Créditos' : cardTitle.replace(/créditocrédito/gi, 'Créditos');
+        if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('productivo, consumo')) cardSubtitle = 'Líneas de crédito';
+      } else if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros de vida seguros') || lowerTitle.includes('seguros médicos')) {
+        cardTitle = cardTitle.includes('seguros médicos') ? 'Seguros' : cardTitle.replace(/seguros de vida seguros/gi, 'Seguros');
+        if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros médicos')) cardSubtitle = 'Protección y vida';
+      } else if (lowerSub.includes('remesa!') || lowerTitle.includes('remesas dirigidas')) {
+        cardTitle = cardTitle.replace(/remesas dirigidas/gi, 'Remesas');
+        if (lowerSub.includes('remesa!')) cardSubtitle = 'Recibe tu dinero';
+      }
+
+      return `
               <div class="clean-item-card" onclick="${clickAction}" role="button" tabindex="0" title="Ver ${cardTitle}">
                 <div class="clean-card-top-row">
                   <div class="clean-card-icon-box">
                     ${iconImg && (iconImg.startsWith('assets/') || iconImg.startsWith('http') || iconImg.startsWith('data:')) ? `
-                      <img src="${iconImg}" alt="${cardTitle}" class="clean-card-icon-img" onerror="this.src='assets/distintivo_colua.png'" />
+                      <img src="${iconImg}" alt="${cardTitle}" class="clean-card-icon-img" onerror="this.src='assets/ahorros.png'" />
                     ` : `
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#173789" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
                     `}
@@ -248,7 +303,7 @@ class HomeComponent {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </section>
 
         <!-- ==============================================
@@ -631,10 +686,10 @@ class HomeComponent {
       const calcTasaRes = document.getElementById('calc-credito-tasa-res');
       const calcInteresesRes = document.getElementById('calc-credito-intereses-res');
 
-      if (dispPlazo) dispPlazo.innerText = `${meses} Meses (${(meses/12).toFixed(1)} Años)`;
+      if (dispPlazo) dispPlazo.innerText = `${meses} Meses (${(meses / 12).toFixed(1)} Años)`;
       if (calcCuota) calcCuota.innerText = `Q ${formatNumberWithCommas(cuota.toFixed(2))}`;
       if (calcMontoRes) calcMontoRes.innerText = `Q ${formatNumberWithCommas(currentMonto.toFixed(2))}`;
-      if (calcPlazoRes) calcPlazoRes.innerText = `${meses} meses (${(meses/12).toFixed(1)} años)`;
+      if (calcPlazoRes) calcPlazoRes.innerText = `${meses} meses (${(meses / 12).toFixed(1)} años)`;
       if (calcTasaRes) calcTasaRes.innerText = `${(tasaMensual * 100).toFixed(2)}% mes (${tasaAnual}% anual)`;
       if (calcInteresesRes) calcInteresesRes.innerText = `Q ${formatNumberWithCommas(totalIntereses.toFixed(2))}`;
     };
@@ -731,7 +786,7 @@ class HomeComponent {
       const calcTotal = document.getElementById('calc-ahorro-total');
       const calcTasa = document.getElementById('calc-ahorro-tasa');
 
-      if (dispPlazo) dispPlazo.innerText = `${dias} Días (${(dias/365).toFixed(1)} Años)`;
+      if (dispPlazo) dispPlazo.innerText = `${dias} Días (${(dias / 365).toFixed(1)} Años)`;
       if (calcGanancia) calcGanancia.innerText = `Q ${formatNumberWithCommas(ganancia.toFixed(2))}`;
       if (calcTotal) calcTotal.innerText = `Q ${formatNumberWithCommas(total.toFixed(2))}`;
       if (calcTasa) calcTasa.innerText = `${(tasaAnual * 100).toFixed(2)}% Anual`;

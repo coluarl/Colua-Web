@@ -31,6 +31,9 @@ class FirebaseClient {
       if (!this._db && typeof firebase.firestore === 'function') {
         this._db = firebase.firestore();
       }
+      if (!this._storage && typeof firebase.storage === 'function') {
+        this._storage = firebase.storage();
+      }
       this.isInitialized = !!(this._app && this._db);
       return this.isInitialized;
     } catch (e) {
@@ -56,6 +59,12 @@ class FirebaseClient {
     return this._db;
   }
   set db(v) { this._db = v; }
+
+  get storage() {
+    if (!this._storage) this.init();
+    return this._storage;
+  }
+  set storage(v) { this._storage = v; }
 
   // --- MÉTODOS DE AUTENTICACIÓN ---
   async loginWithEmail(email, password) {
