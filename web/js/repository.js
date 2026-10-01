@@ -243,13 +243,6 @@ class ColuaRepository {
           existing.subtitle = canonicalHomeMap[cardId].subtitle;
           changed = true;
         }
-        if (cardId === 'home_asociate') {
-          if (existing.title !== 'Como asociarte') { existing.title = 'Como asociarte'; changed = true; }
-          if (existing.subtitle !== 'DPI, Recibo de Luz, Q100.00') { existing.subtitle = 'DPI, Recibo de Luz, Q100.00'; changed = true; }
-          if (existing.imageUrl !== 'assets/ahorros.png') { existing.imageUrl = 'assets/ahorros.png'; changed = true; }
-          if (existing.buttonAction !== 'form:form_asociate') { existing.buttonAction = 'form:form_asociate'; changed = true; }
-          if (existing.targetSectionId !== 'form:form_asociate') { existing.targetSectionId = 'form:form_asociate'; changed = true; }
-        }
         if (!existing.targetSectionId) { existing.targetSectionId = canonicalHomeMap[cardId].targetSectionId; changed = true; }
       }
     });
@@ -420,31 +413,6 @@ class ColuaRepository {
       item.title = 'Remesas';
       item.subtitle = 'Recibe tu dinero';
       changed = true;
-    }
-
-    // Normalizar canónicamente la tarjeta 'Como asociarte' para que nunca quede residualmente con 'Formulario de Consultas y Solicitud'
-    const lowerTitle = titleStr.toLowerCase();
-    const lowerSub = subStr.toLowerCase();
-    const itemId = (item.id || '').toLowerCase();
-    const tgt = (item.targetSectionId || '').toLowerCase();
-    const act = (item.buttonAction || '').toLowerCase();
-
-    if (
-      itemId === 'home_asociate' ||
-      tgt === 'form:form_asociate' ||
-      act === 'form:form_asociate' ||
-      lowerTitle.includes('formulario de consultas') ||
-      lowerTitle.includes('consultas y solicitud') ||
-      lowerSub.includes('directamente a la administración')
-    ) {
-      if (item.title !== 'Como asociarte') { item.title = 'Como asociarte'; changed = true; }
-      if (item.subtitle !== 'DPI, Recibo de Luz, Q100.00') { item.subtitle = 'DPI, Recibo de Luz, Q100.00'; changed = true; }
-      if (item.shortDescription !== 'DPI, Recibo de Luz, Q100.00') { item.shortDescription = 'DPI, Recibo de Luz, Q100.00'; changed = true; }
-      if (item.imageUrl !== 'assets/ahorros.png') { item.imageUrl = 'assets/ahorros.png'; changed = true; }
-      if (item.iconName !== 'ahorros') { item.iconName = 'ahorros'; changed = true; }
-      if (item.targetSectionId !== 'form:form_asociate') { item.targetSectionId = 'form:form_asociate'; changed = true; }
-      if (item.buttonAction !== 'form:form_asociate') { item.buttonAction = 'form:form_asociate'; changed = true; }
-      if (item.displayOrder !== 1) { item.displayOrder = 1; changed = true; }
     }
     return changed;
   }
@@ -3097,19 +3065,7 @@ class ColuaRepository {
     }
     this.saveLocalDb(db);
 
-    // 1. Guardado en la base de datos de Supabase (PostgREST)
-    if (window.supabaseStorageManager && typeof window.supabaseStorageManager.submitLeadToSupabase === 'function') {
-      try {
-        const supaRes = await window.supabaseStorageManager.submitLeadToSupabase(fullLead);
-        if (supaRes && supaRes.success) {
-          console.log('[ColuaRepo] ✓ Solicitud guardada exitosamente en Supabase Database:', supaRes.table);
-        }
-      } catch (supaErr) {
-        console.warn('[ColuaRepo] Error guardando lead en Supabase DB:', supaErr);
-      }
-    }
-
-    // 2. Guardado en la nube (Firebase Firestore)
+    // Guardado en la nube (Firebase Firestore)
     if (this.fb) {
       try {
         const auth = this.fb.auth;
