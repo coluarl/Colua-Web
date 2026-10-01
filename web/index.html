@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
@@ -7,8 +8,10 @@
 
     <!-- SEO y Metadatos Corporativos -->
     <title>COLUA MICOOPE - Portal Oficial de Asociados</title>
-    <meta name="description" content="Portal digital oficial de COLUA R.L. MICOOPE. Cuentas de Ahorro, Créditos, Seguros Columna, Remesas Familiares, Beneficios y Red de Agencias en Guatemala.">
-    <meta name="keywords" content="COLUA, MICOOPE, Cooperativa, Ahorro, Crédito, Seguros, Remesas, Sololá, Quiché, Guatemala">
+    <meta name="description"
+        content="Portal digital oficial de COLUA R.L. MICOOPE. Cuentas de Ahorro, Créditos, Seguros Columna, Remesas Familiares, Beneficios y Red de Agencias en Guatemala.">
+    <meta name="keywords"
+        content="COLUA, MICOOPE, Cooperativa, Ahorro, Crédito, Seguros, Remesas, Sololá, Quiché, Guatemala">
     <meta name="author" content="Cooperativa COLUA R.L.">
     <meta name="theme-color" content="#2563eb">
 
@@ -16,7 +19,8 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="COLUA MICOOPE">
     <meta property="og:title" content="COLUA MICOOPE - Portal Oficial de Asociados">
-    <meta property="og:description" content="El lado humano de los ahorros y créditos cooperativos. Solidez, confianza y desarrollo financiero en Guatemala.">
+    <meta property="og:description"
+        content="El lado humano de los ahorros y créditos cooperativos. Solidez, confianza y desarrollo financiero en Guatemala.">
     <meta property="og:image" content="assets/logo_composite.png">
     <meta property="og:locale" content="es_GT">
 
@@ -41,7 +45,7 @@
     <meta name="apple-mobile-web-app-title" content="Colua Digital">
     <script>
         // Capturar anticipadamente el evento de instalacion PWA
-        window.addEventListener('beforeinstallprompt', function(e) {
+        window.addEventListener('beforeinstallprompt', function (e) {
             e.preventDefault();
             window._coluaDeferredPrompt = e;
             if (window.app) window.app.deferredInstallPrompt = e;
@@ -52,7 +56,8 @@
     <!-- Fuentes Google (Poppins e Inter) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <!-- CSS del Sistema de Diseño Minimalista COLUA -->
     <link rel="stylesheet" href="css/styles.css?v=2.0.3">
@@ -65,31 +70,36 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+    <!-- PDF.js de Mozilla (Renderizado y generación de portadas de primera hoja de PDFs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <!-- Core: Configuración y Conectores -->
-    <script defer src="js/config.js?v=3.0.1"></script>
-    <script defer src="js/qr-generator.js?v=3.2.0"></script>
-    <script defer src="js/firebase-client.js?v=3.0.1"></script>
-    <script defer src="js/supabase-client.js?v=3.6.0"></script>
-    <script defer src="js/auth.js?v=3.0.1"></script>
-    <script defer src="js/repository.js?v=3.6.0"></script>
+    <script defer src="js/config.js?v=6.9.0"></script>
+    <script defer src="js/qr-generator.js?v=6.9.0"></script>
+    <script defer src="js/firebase-client.js?v=6.9.0"></script>
+    <script defer src="js/supabase-client.js?v=6.9.0"></script>
+    <script defer src="js/auth.js?v=6.9.0"></script>
+    <script defer src="js/repository.js?v=6.9.0"></script>
 
     <!-- Componentes de Interfaz UI -->
-    <script defer src="js/components/navbar.js?v=3.2.0"></script>
-    <script defer src="js/components/sidebar.js?v=3.1.1"></script>
-    <script defer src="js/components/bottom-nav.js?v=3.1.1"></script>
-    <script defer src="js/components/home.js?v=3.6.0"></script>
-    <script defer src="js/components/sections.js?v=3.6.0"></script>
-    <script defer src="js/components/noticias.js?v=3.1.1"></script>
-    <script defer src="js/components/agencias.js?v=3.1.1"></script>
-    <script defer src="js/components/perfil.js?v=3.1.1"></script>
-    <script defer src="js/components/admin.js?v=3.6.0"></script>
-    <script defer src="js/components/chatbot.js?v=3.1.1"></script>
+    <script defer src="js/components/navbar.js?v=6.9.0"></script>
+    <script defer src="js/components/sidebar.js?v=6.9.0"></script>
+    <script defer src="js/components/bottom-nav.js?v=6.9.0"></script>
+    <script defer src="js/components/home.js?v=6.9.0"></script>
+    <script defer src="js/components/sections.js?v=6.9.0"></script>
+    <script defer src="js/components/noticias.js?v=6.9.0"></script>
+    <script defer src="js/components/agencias.js?v=6.9.0"></script>
+    <script defer src="js/components/perfil.js?v=6.9.0"></script>
+    <script defer src="js/components/admin.js?v=6.9.0"></script>
+    <script defer src="js/components/chatbot.js?v=6.9.0"></script>
 
     <!-- Router y Bootstrap Principal -->
-    <script defer src="js/router.js?v=3.2.0"></script>
-    <script defer src="js/app.js?v=3.6.0"></script>
+    <script defer src="js/router.js?v=6.9.0"></script>
+    <script defer src="js/app.js?v=6.9.0"></script>
 </head>
+
 <body>
     <!-- ==============================================
          1. BARRA DE NAVEGACIÓN MINIMALISTA PRE-RENDERIZADA
@@ -101,14 +111,18 @@
                 <div class="navbar-container">
                     <!-- Logo y Toggle Móvil -->
                     <div class="navbar-brand-section">
-                        <button class="btn-menu-toggle mobile-only" id="btn-open-sidebar" aria-label="Abrir Menú Lateral" style="color:#0f172a;margin-right:8px;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="btn-menu-toggle mobile-only" id="btn-open-sidebar"
+                            onclick="window.sidebarComponent ? window.sidebarComponent.open() : null;"
+                            aria-label="Abrir Menú Lateral" style="color:#0f172a;margin-right:8px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
                             </svg>
                         </button>
-                        <div class="clean-brand-logo" id="btn-brand-home" title="Ir al Inicio de COLUA MICOOPE" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">
+                        <div class="clean-brand-logo" id="btn-brand-home" title="Ir al Inicio de COLUA MICOOPE"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">
                             <img src="assets/distintivo_colua.png" alt="COLUA R.L." class="clean-brand-badge-img" />
                             <div class="clean-brand-text">
                                 <span class="clean-brand-colua">COLUA</span>
@@ -119,8 +133,10 @@
 
                     <!-- Acciones Principales Derecha -->
                     <div class="navbar-actions">
-                        <button class="btn-nav-utility" id="btn-top-install" title="Instalar App Web" onclick="window.app ? window.app.promptInstallApp() : null;">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="btn-nav-utility" id="btn-top-install" title="Instalar App Web"
+                            onclick="window.app ? window.app.promptInstallApp() : null;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="7 10 12 15 17 10"></polyline>
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -128,16 +144,20 @@
                             <span class="nav-utility-text">Instalar App</span>
                         </button>
 
-                        <a href="https://micoopeenlinea.com.gt" target="_blank" rel="noopener noreferrer" class="btn-micoope-pill" title="Ingresar a MICOOPE en Línea">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <a href="https://micoopeenlinea.com.gt" target="_blank" rel="noopener noreferrer"
+                            class="btn-micoope-pill" title="Ingresar a MICOOPE en Línea">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
                             <span>MICOOPE en Línea</span>
                         </a>
 
-                        <button class="btn-nav-utility highlight" id="btn-top-login" title="Iniciar sesión" onclick="window.app ? window.app.showLoginModal() : null;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="btn-nav-utility highlight" id="btn-top-login" title="Iniciar sesión"
+                            onclick="window.app ? window.app.showLoginModal() : null;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                                 <polyline points="10 17 15 12 10 7"></polyline>
                                 <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -145,8 +165,11 @@
                             <span class="nav-utility-text">Iniciar Sesión</span>
                         </button>
 
-                        <button class="btn-user-avatar-circle" id="btn-top-perfil" title="Mi Carné y Perfil de Asociado" aria-label="Perfil de Asociado" onclick="window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil')">
-                            <img src="assets/perfil.png" alt="Perfil" style="width: 20px; height: 20px; object-fit: contain; filter: brightness(0) invert(1);" />
+                        <button class="btn-user-avatar-circle" id="btn-top-perfil" title="Mi Carné y Perfil de Asociado"
+                            aria-label="Perfil de Asociado"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil')">
+                            <img src="assets/perfil.png" alt="Perfil"
+                                style="width: 20px; height: 20px; object-fit: contain; filter: brightness(0) invert(1);" />
                         </button>
                     </div>
                 </div>
@@ -156,18 +179,34 @@
             <div class="navbar-menu-row">
                 <div class="navbar-container">
                     <nav class="desktop-nav-menu" aria-label="Navegación Principal">
-                        <button class="nav-link-btn active" data-nav="sec_home" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">Inicio</button>
-                        <button class="nav-link-btn" data-nav="sec_ahorros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')">Ahorros</button>
-                        <button class="nav-link-btn" data-nav="sec_creditos" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')">Créditos</button>
-                        <button class="nav-link-btn" data-nav="sec_seguros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros')">Seguros</button>
-                        <button class="nav-link-btn" data-nav="sec_remesas" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas')">Remesas</button>
-                        <button class="nav-link-btn" data-nav="sec_servicios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">Servicios</button>
-                        <button class="nav-link-btn" data-nav="sec_beneficios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">Beneficios</button>
-                        <button class="nav-link-btn" data-nav="sec_sostenibilidad" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad')">Sostenibilidad</button>
-                        <button class="nav-link-btn" data-nav="sec_noticias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">Noticias</button>
-                        <button class="nav-link-btn" data-nav="sec_agencias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">Agencias</button>
-                        <button class="nav-link-btn" data-nav="sec_nosotros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Nosotros</button>
-                        <button class="nav-link-btn" data-nav="admin" onclick="window.coluaRouter ? window.coluaRouter.navigate('admin') : (window.location.hash='#admin')">Portal Administrativo</button>
+                        <button class="nav-link-btn active" data-nav="sec_home"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">Inicio</button>
+                        <button class="nav-link-btn" data-nav="sec_ahorros"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')">Ahorros</button>
+                        <button class="nav-link-btn" data-nav="sec_creditos"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')">Créditos</button>
+                        <button class="nav-link-btn" data-nav="sec_seguros"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros')">Seguros</button>
+                        <button class="nav-link-btn" data-nav="sec_remesas"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas')">Remesas</button>
+                        <button class="nav-link-btn" data-nav="sec_servicios"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">Servicios</button>
+                        <button class="nav-link-btn" data-nav="sec_beneficios"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">Beneficios</button>
+                        <button class="nav-link-btn" data-nav="sec_sostenibilidad"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad')">Sostenibilidad</button>
+                        <button class="nav-link-btn" data-nav="sec_noticias"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">Noticias</button>
+                        <button class="nav-link-btn" data-nav="sec_agencias"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">Agencias</button>
+                        <button class="nav-link-btn" data-nav="sec_nosotros"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Nosotros</button>
+                        <button class="nav-link-btn" data-nav="sec_nosotros"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Gobierno
+                            Cooperativo</button>
+                        <button class="nav-link-btn" data-nav="sec_empleo"
+                            onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_empleo') : (window.location.hash='#sec_empleo')">Mi
+                            empleo</button>
                     </nav>
                 </div>
             </div>
@@ -175,99 +214,144 @@
     </div>
 
     <div id="sidebar-root">
-        <div class="drawer-overlay" id="drawer-overlay" onclick="window.sidebarComponent ? window.sidebarComponent.close() : null;"></div>
+        <div class="drawer-overlay" id="drawer-overlay"
+            onclick="window.sidebarComponent ? window.sidebarComponent.close() : null;"></div>
         <aside class="sidebar-drawer" id="sidebar-drawer" aria-label="Menú de Navegación Lateral">
             <div class="drawer-header">
-                <div class="drawer-user-info" id="btn-sidebar-profile-header" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil');">
-                    <div class="drawer-user-avatar" style="background: transparent; display: flex; align-items: center; justify-content: center; padding: 0;">
-                        <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 36px; height: 36px; object-fit: contain;" />
+                <div class="drawer-user-info" id="btn-sidebar-profile-header"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil');">
+                    <div class="drawer-user-avatar"
+                        style="background: transparent; display: flex; align-items: center; justify-content: center; padding: 0;">
+                        <img src="assets/distintivo_colua.png" alt="COLUA"
+                            style="width: 36px; height: 36px; object-fit: contain;" />
                     </div>
                     <div class="drawer-user-text">
                         <h4>Invitado</h4>
                         <span>Modo Consulta</span>
                     </div>
                 </div>
-                <button class="btn-close-drawer" id="btn-close-sidebar" aria-label="Cerrar Menú" onclick="window.sidebarComponent ? window.sidebarComponent.close() : null;">✕</button>
+                <button class="btn-close-drawer" id="btn-close-sidebar" aria-label="Cerrar Menú"
+                    onclick="window.sidebarComponent ? window.sidebarComponent.close() : null;">✕</button>
             </div>
 
             <div class="drawer-body">
-                <div class="drawer-menu-item" data-route="sec_home" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio');">
-                    <img src="assets/distintivo_colua.png" alt="" style="padding: 2px;" />
-                    <span>Inicio</span>
+                <div class="drawer-menu-item" data-route="sec_home"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio');">
+                    <img src="assets/distintivo_colua.png" alt=""
+                        style="padding: 2px; width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Inicio</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="perfil" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil');">
-                    <img src="assets/perfil.png" alt="" onerror="this.src='assets/ic_person.png'" />
-                    <span>Mi Perfil</span>
+                <div class="drawer-menu-item" data-route="perfil"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('perfil') : (window.location.hash='#perfil');">
+                    <img src="assets/perfil.png" alt="" onerror="this.src='assets/ic_person.png'"
+                        style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Mi Perfil</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_ahorros" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros');">
-                    <img src="assets/ahorros.png" alt="" />
-                    <span>Cuentas de Ahorro</span>
+                <div class="drawer-divider-line" style="height: 1px; background: #e2e8f0; margin: 6px 1.2rem;"></div>
+
+                <div class="drawer-menu-item" data-route="sec_ahorros"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros');">
+                    <img src="assets/ahorros.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Ahorros</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_creditos" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos');">
-                    <img src="assets/credito.png" alt="" />
-                    <span>Créditos</span>
+                <div class="drawer-menu-item" data-route="sec_creditos"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos');">
+                    <img src="assets/credito.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Créditos</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_seguros" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros');">
-                    <img src="assets/seguro.png" alt="" />
-                    <span>Seguros Columna</span>
+                <div class="drawer-menu-item" data-route="sec_seguros"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_seguros') : (window.location.hash='#sec_seguros');">
+                    <img src="assets/seguro.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Seguros</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_remesas" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas');">
-                    <img src="assets/remesa.png" alt="" />
-                    <span>Remesas Familiares</span>
+                <div class="drawer-menu-item" data-route="sec_remesas"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_remesas') : (window.location.hash='#sec_remesas');">
+                    <img src="assets/remesa.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Remesas</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_servicios" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios');">
-                    <img src="assets/servicios_digitales.png" alt="" />
-                    <span>Servicios</span>
+                <div class="drawer-menu-item" data-route="sec_servicios"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios');">
+                    <img src="assets/servicios_digitales.png" alt=""
+                        style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Servicios</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_beneficios" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios');">
-                    <img src="assets/beneficios.png" alt="" />
-                    <span>Beneficios</span>
+                <div class="drawer-menu-item" data-route="sec_beneficios"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios');">
+                    <img src="assets/beneficios.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Beneficios</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_sostenibilidad" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad');">
-                    <img src="assets/sostenibilidad_cooperativa.png" alt="" />
-                    <span>Sostenibilidad Cooperativa</span>
+                <div class="drawer-menu-item" data-route="sec_sostenibilidad"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_sostenibilidad') : (window.location.hash='#sec_sostenibilidad');">
+                    <img src="assets/sostenibilidad_cooperativa.png" alt=""
+                        style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Sostenibilidad</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_agencias" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias');">
-                    <img src="assets/ubicacion.png" alt="" />
-                    <span>Red de Agencias</span>
+                <div class="drawer-menu-item" data-route="sec_noticias"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias');">
+                    <img src="assets/noticias_colua.png" alt=""
+                        style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Noticias</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_noticias" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias');">
-                    <img src="assets/noticias_colua.png" alt="" />
-                    <span>Noticias y Eventos</span>
+
+                <div class="drawer-menu-item" data-route="sec_agencias"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias');">
+                    <img src="assets/ubicacion.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Agencias</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="sec_nosotros" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros');">
-                    <img src="assets/distintivo_colua.png" alt="" style="padding: 2px;" />
-                    <span>Sobre Nosotros</span>
+                <div class="drawer-menu-item" data-route="sec_nosotros"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros');">
+                    <img src="assets/distintivo_colua.png" alt=""
+                        style="padding: 2px; width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Nosotros</span>
                 </div>
 
-                <div class="drawer-menu-item" data-route="admin" style="font-weight: 700; color: var(--colua-navy);" onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('admin') : (window.location.hash='#admin');">
-                    <img src="assets/portal_administrativo.png" alt="" />
-                    <span>Portal administrativo</span>
+                <div class="drawer-menu-item" data-route="sec_nosotros"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros');">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round" style="color: #173789; flex-shrink: 0;">
+                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"></path>
+                    </svg>
+                    <span class="drawer-item-label">Gobierno Cooperativo</span>
                 </div>
 
-                <div class="drawer-menu-item" id="btn-sidebar-install" style="color: #059669; font-weight: 600;" onclick="window.sidebarComponent?.close(); window.app ? window.app.promptInstallApp() : null;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                <div class="drawer-menu-item" data-route="sec_empleo"
+                    onclick="window.sidebarComponent?.close(); window.coluaRouter ? window.coluaRouter.navigate('sec_empleo') : (window.location.hash='#sec_empleo');">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round" style="color: #2563eb; flex-shrink: 0;">
+                        <rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    <span class="drawer-item-label">Mi empleo</span>
+                </div>
+
+                <div class="drawer-divider-line" style="height: 1px; background: #e2e8f0; margin: 10px 1.2rem;"></div>
+
+                <div class="drawer-menu-item" id="btn-sidebar-install" style="color: #059669; font-weight: 600;"
+                    onclick="window.sidebarComponent?.close(); window.app ? window.app.promptInstallApp() : null;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    <span>Instalar App Web</span>
+                    <span class="drawer-item-label">Instalar App Web</span>
                 </div>
 
-                <div class="drawer-menu-item logout" id="btn-sidebar-logout" onclick="window.sidebarComponent?.close(); window.app ? window.app.showLogoutConfirm() : null;">
-                    <img src="assets/cerrar.png" alt="" />
-                    <span>Restablecer / Salir</span>
+                <div class="drawer-menu-item logout" id="btn-sidebar-logout"
+                    onclick="window.sidebarComponent?.close(); window.app ? window.app.showLogoutConfirm() : null;">
+                    <img src="assets/cerrar.png" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
+                    <span class="drawer-item-label">Restablecer / Salir</span>
                 </div>
             </div>
         </aside>
@@ -278,11 +362,11 @@
          ============================================== -->
     <main id="main-content" role="main">
         <div class="clean-page-container">
-            
+
             <!-- Hero Header -->
             <header class="clean-hero-header">
                 <h1 class="clean-hero-title">
-                    Hola, bienvenido a <span class="brand-blue-accent">COLUA MICOOPE</span>
+                    Hola, bienvenido a COLUA MICOOPE
                 </h1>
                 <p class="clean-hero-subtitle">
                     El lado humano de los ahorros y créditos cooperativos. Selecciona un área para comenzar tu gestión.
@@ -295,7 +379,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -304,7 +389,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -313,7 +399,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -322,7 +409,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -331,7 +419,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -340,7 +429,8 @@
                     <div class="clean-card-top-row">
                         <div class="skeleton-icon-box"></div>
                     </div>
-                    <div class="clean-card-info-bottom" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="clean-card-info-bottom"
+                        style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                         <div class="skeleton-line skeleton-title"></div>
                         <div class="skeleton-line skeleton-sub"></div>
                     </div>
@@ -357,12 +447,14 @@
                     <div class="clean-banner-white-info">
                         <span class="clean-banner-tag-blue">ATENCIÓN TELEFÓNICA</span>
                         <a href="tel:77957795" class="clean-banner-pbx-number">PBX: (502) 7795-7795</a>
-                        <span class="clean-banner-pbx-hours">Lunes a viernes de 8:00 a 17:00 | Sábados de 8:00 a 12:00 hrs.</span>
+                        <span class="clean-banner-pbx-hours">Lunes a viernes de 8:00 a 17:00 | Sábados de 8:00 a 12:00
+                            hrs.</span>
                     </div>
                 </div>
 
                 <!-- Banner Dark Navy: MICOOPE en Línea -->
-                <a href="https://micoopeenlinea.com.gt" target="_blank" rel="noopener noreferrer" class="clean-banner-dark-card" title="Ingresar a MICOOPE en Línea">
+                <a href="https://micoopeenlinea.com.gt" target="_blank" rel="noopener noreferrer"
+                    class="clean-banner-dark-card" title="Ingresar a MICOOPE en Línea">
                     <div class="clean-banner-dark-left">
                         <div class="clean-banner-dark-icon">
                             <img src="assets/micoope_enlinea.png" alt="MICOOPE en Línea" />
@@ -379,13 +471,15 @@
             <!-- Sellos de Supervisión y Confianza -->
             <div class="clean-trust-strip-row">
                 <div class="clean-trust-item">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
                     <span>Entidad supervisada por la Inspección General de Cooperativas (INGECOP)</span>
                 </div>
                 <div class="clean-trust-item">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
@@ -397,9 +491,13 @@
             <section class="clean-simulator-wrapper" id="simulador-financiero">
                 <div class="clean-sim-header-row">
                     <div>
-                        <span style="font-size:0.75rem;font-weight:800;color:#173789;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px;">HERRAMIENTA FINANCIERA EN VIVO</span>
-                        <h2 style="font-size:1.45rem;font-weight:800;color:#0f172a;margin:0 0 0.25rem 0;">Calcula tu Cuota o Rendimiento</h2>
-                        <p style="font-size:0.88rem;color:#64748b;margin:0;">Simula tu préstamo o inversión a plazo fijo con montos ilimitados y tasas oficiales actualizadas.</p>
+                        <span
+                            style="font-size:0.75rem;font-weight:800;color:#173789;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px;">HERRAMIENTA
+                            FINANCIERA EN VIVO</span>
+                        <h2 style="font-size:1.45rem;font-weight:800;color:#0f172a;margin:0 0 0.25rem 0;">Calcula tu
+                            Cuota o Rendimiento</h2>
+                        <p style="font-size:0.88rem;color:#64748b;margin:0;">Simula tu préstamo o inversión a plazo fijo
+                            con montos ilimitados y tasas oficiales actualizadas.</p>
                     </div>
                     <div class="clean-sim-tabs">
                         <button class="clean-sim-tab-btn active" id="sim-tab-credito">Simulador de Crédito</button>
@@ -413,51 +511,79 @@
                         <div class="clean-sim-form-col">
                             <!-- Línea de Crédito & Tasa -->
                             <div style="margin-bottom:1.35rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:6px;">
-                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Tipo de Crédito y Tasa Oficial</label>
-                                    <span id="badge-tasa-credito" style="font-size:0.76rem;font-weight:800;color:#15803d;background:#dcfce7;padding:3px 9px;border-radius:8px;">
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:6px;">
+                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Tipo de Crédito y
+                                        Tasa Oficial</label>
+                                    <span id="badge-tasa-credito"
+                                        style="font-size:0.76rem;font-weight:800;color:#15803d;background:#dcfce7;padding:3px 9px;border-radius:8px;">
                                         1.25% mensual (15.00% anual)
                                     </span>
                                 </div>
-                                <select id="select-credito-destino" style="width:100%;box-sizing:border-box;padding:0.65rem 0.85rem;border:1.5px solid #cbd5e1;border-radius:10px;font-family:inherit;font-size:0.9rem;background:#ffffff;color:#0f172a;font-weight:600;outline:none;">
-                                    <option value="1.25" data-tasa-anual="15.00" data-name="Crédito Productivo">Crédito Productivo — Capital de trabajo e inversión (1.25% mes / 15.00% año)</option>
-                                    <option value="1.35" data-tasa-anual="16.20" data-name="Crédito Consumo">Crédito Consumo — Gastos personales, estudios y menaje (1.35% mes / 16.20% año)</option>
-                                    <option value="1.15" data-tasa-anual="13.80" data-name="Crédito Vivienda">Crédito Vivienda — Compra, construcción o remodelación (1.15% mes / 13.80% año)</option>
-                                    <option value="1.20" data-tasa-anual="14.40" data-name="Crédi Vehículo">Crédi Vehículo — Vehículo o motocicleta nueva/usada (1.20% mes / 14.40% año)</option>
-                                    <option value="1.30" data-tasa-anual="15.60" data-name="Crédito MIPYMES">Crédito MIPYMES — Negocios y comercio en crecimiento (1.30% mes / 15.60% año)</option>
-                                    <option value="1.25" data-tasa-anual="15.00" data-name="Crédito Agrícola">Crédito Agrícola — Siembra, cosecha y tecnificación (1.25% mes / 15.00% año)</option>
-                                    <option value="1.00" data-tasa-anual="12.00" data-name="Crédito Automático">Crédito Automático — Respaldo sobre aportaciones (1.00% mes / 12.00% año)</option>
-                                    <option value="1.40" data-tasa-anual="16.80" data-name="Microcréditos">Microcréditos — Emprendimiento ágil sin trámites largos (1.40% mes / 16.80% año)</option>
+                                <select id="select-credito-destino"
+                                    style="width:100%;box-sizing:border-box;padding:0.65rem 0.85rem;border:1.5px solid #cbd5e1;border-radius:10px;font-family:inherit;font-size:0.9rem;background:#ffffff;color:#0f172a;font-weight:600;outline:none;">
+                                    <option value="1.25" data-tasa-anual="15.00" data-name="Crédito Productivo">Crédito
+                                        Productivo — Capital de trabajo e inversión (1.25% mes / 15.00% año)</option>
+                                    <option value="1.35" data-tasa-anual="16.20" data-name="Crédito Consumo">Crédito
+                                        Consumo — Gastos personales, estudios y menaje (1.35% mes / 16.20% año)</option>
+                                    <option value="1.15" data-tasa-anual="13.80" data-name="Crédito Vivienda">Crédito
+                                        Vivienda — Compra, construcción o remodelación (1.15% mes / 13.80% año)</option>
+                                    <option value="1.20" data-tasa-anual="14.40" data-name="Crédi Vehículo">Crédi
+                                        Vehículo — Vehículo o motocicleta nueva/usada (1.20% mes / 14.40% año)</option>
+                                    <option value="1.30" data-tasa-anual="15.60" data-name="Crédito MIPYMES">Crédito
+                                        MIPYMES — Negocios y comercio en crecimiento (1.30% mes / 15.60% año)</option>
+                                    <option value="1.25" data-tasa-anual="15.00" data-name="Crédito Agrícola">Crédito
+                                        Agrícola — Siembra, cosecha y tecnificación (1.25% mes / 15.00% año)</option>
+                                    <option value="1.00" data-tasa-anual="12.00" data-name="Crédito Automático">Crédito
+                                        Automático — Respaldo sobre aportaciones (1.00% mes / 12.00% año)</option>
+                                    <option value="1.40" data-tasa-anual="16.80" data-name="Microcréditos">Microcréditos
+                                        — Emprendimiento ágil sin trámites largos (1.40% mes / 16.80% año)</option>
                                 </select>
                             </div>
 
                             <!-- Monto a Solicitar con Formateo de Comas y Min/Max -->
                             <div style="margin-bottom:1.35rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
-                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Monto a Solicitar (Escribe o desliza)</label>
-                                    <span style="font-size:0.75rem;color:#64748b;">(Separación automática con comas)</span>
-                                </div>
-                                
-                                <div style="position:relative;margin-bottom:0.75rem;">
-                                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#173789;font-size:1.1rem;">Q</span>
-                                    <input type="text" id="input-credito-monto" value="25,000" placeholder="Ej. 1,000,000" style="width:100%;box-sizing:border-box;padding:0.7rem 0.85rem 0.7rem 2.2rem;border:2px solid #2563eb;border-radius:10px;font-family:inherit;font-size:1.15rem;font-weight:800;color:#0f172a;outline:none;background:#f8faff;" />
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
+                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Monto a Solicitar
+                                        (Escribe o desliza)</label>
+                                    <span style="font-size:0.75rem;color:#64748b;">(Separación automática con
+                                        comas)</span>
                                 </div>
 
-                                <input type="range" id="range-credito-monto" min="1000" max="1000000" step="1000" value="25000" style="width:100%;box-sizing:border-box;accent-color:#2563eb;cursor:pointer;" />
-                                
+                                <div style="position:relative;margin-bottom:0.75rem;">
+                                    <span
+                                        style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#173789;font-size:1.1rem;">Q</span>
+                                    <input type="text" id="input-credito-monto" value="25,000"
+                                        placeholder="Ej. 1,000,000"
+                                        style="width:100%;box-sizing:border-box;padding:0.7rem 0.85rem 0.7rem 2.2rem;border:2px solid #2563eb;border-radius:10px;font-family:inherit;font-size:1.15rem;font-weight:800;color:#0f172a;outline:none;background:#f8faff;" />
+                                </div>
+
+                                <input type="range" id="range-credito-monto" min="1000" max="1000000" step="1000"
+                                    value="25000"
+                                    style="width:100%;box-sizing:border-box;accent-color:#2563eb;cursor:pointer;" />
+
                                 <div class="clean-sim-minmax-grid">
-                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
-                                        <label style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Monto Mínimo</label>
+                                    <div
+                                        style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
+                                        <label
+                                            style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Monto
+                                            Mínimo</label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <span style="font-weight:700;color:#64748b;font-size:0.8rem;">Q</span>
-                                            <input type="text" id="input-credito-min" value="1,000" style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
+                                            <input type="text" id="input-credito-min" value="1,000"
+                                                style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
                                         </div>
                                     </div>
-                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
-                                        <label style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Monto Máximo (Hasta 1M+)</label>
+                                    <div
+                                        style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
+                                        <label
+                                            style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Monto
+                                            Máximo (Hasta 1M+)</label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <span style="font-weight:700;color:#64748b;font-size:0.8rem;">Q</span>
-                                            <input type="text" id="input-credito-max" value="1,000,000" style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
+                                            <input type="text" id="input-credito-max" value="1,000,000"
+                                                style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
                                         </div>
                                     </div>
                                 </div>
@@ -465,12 +591,18 @@
 
                             <!-- Plazo del Crédito -->
                             <div style="margin-bottom:1rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
-                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Plazo del Financiamiento</label>
-                                    <span id="disp-credito-plazo" style="font-size:0.95rem;font-weight:800;color:#2563eb;">24 Meses (2.0 Años)</span>
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
+                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Plazo del
+                                        Financiamiento</label>
+                                    <span id="disp-credito-plazo"
+                                        style="font-size:0.95rem;font-weight:800;color:#2563eb;">24 Meses (2.0
+                                        Años)</span>
                                 </div>
-                                <input type="range" id="range-credito-plazo" min="6" max="120" step="6" value="24" style="width:100%;box-sizing:border-box;accent-color:#2563eb;cursor:pointer;" />
-                                <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-top:2px;">
+                                <input type="range" id="range-credito-plazo" min="6" max="120" step="6" value="24"
+                                    style="width:100%;box-sizing:border-box;accent-color:#2563eb;cursor:pointer;" />
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-top:2px;">
                                     <span>6 Meses</span><span>60 Meses (5 Años)</span><span>120 Meses (10 Años)</span>
                                 </div>
                             </div>
@@ -478,23 +610,43 @@
 
                         <!-- Resultado -->
                         <div class="clean-sim-result-card credito">
-                            <span style="font-size:0.76rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:2px;">Cuota Mensual Nivelada</span>
-                            <div id="calc-credito-cuota" class="clean-sim-quote-amount" style="color:#173789;">Q 1,354.17</div>
-                            
+                            <span
+                                style="font-size:0.76rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:2px;">Cuota
+                                Mensual Nivelada</span>
+                            <div id="calc-credito-cuota" class="clean-sim-quote-amount" style="color:#173789;">Q
+                                1,354.17</div>
+
                             <div class="clean-sim-details-list" style="color:#475569;border-top:1.5px solid #cbd5e1;">
-                                <div class="clean-sim-details-row"><span>Monto Solicitado:</span><strong id="calc-credito-monto-res" style="color:#0f172a;font-weight:800;">Q 25,000.00</strong></div>
-                                <div class="clean-sim-details-row"><span>Plazo de Amortización:</span><strong id="calc-credito-plazo-res" style="color:#0f172a;font-weight:700;">24 meses</strong></div>
-                                <div class="clean-sim-details-row"><span>Tasa Aplicada:</span><strong id="calc-credito-tasa-res" style="color:#15803d;font-weight:800;">1.25% mes (15.00% anual)</strong></div>
-                                <div class="clean-sim-details-row"><span>Total Intereses Estimados:</span><strong id="calc-credito-intereses-res" style="color:#0f172a;font-weight:700;">Q 7,500.00</strong></div>
-                                <div class="clean-sim-details-row"><span>Póliza y Seguro de Deudores:</span><strong style="color:#2563eb;font-weight:800;">100% Cubierta por COLUA</strong></div>
+                                <div class="clean-sim-details-row"><span>Monto Solicitado:</span><strong
+                                        id="calc-credito-monto-res" style="color:#0f172a;font-weight:800;">Q
+                                        25,000.00</strong></div>
+                                <div class="clean-sim-details-row"><span>Plazo de Amortización:</span><strong
+                                        id="calc-credito-plazo-res" style="color:#0f172a;font-weight:700;">24
+                                        meses</strong></div>
+                                <div class="clean-sim-details-row"><span>Tasa Aplicada:</span><strong
+                                        id="calc-credito-tasa-res" style="color:#15803d;font-weight:800;">1.25% mes
+                                        (15.00% anual)</strong></div>
+                                <div class="clean-sim-details-row"><span>Total Intereses Estimados:</span><strong
+                                        id="calc-credito-intereses-res" style="color:#0f172a;font-weight:700;">Q
+                                        7,500.00</strong></div>
+                                <div class="clean-sim-details-row"><span>Póliza y Seguro de Deudores:</span><strong
+                                        style="color:#2563eb;font-weight:800;">100% Cubierta por COLUA</strong></div>
                             </div>
-                            
+
                             <div style="display:flex;flex-direction:column;gap:8px;">
-                                <button class="clean-btn-card-action" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')" style="background:#173789;color:#ffffff;border-color:#173789;font-weight:700;font-size:0.92rem;padding:0.75rem 1.25rem;border-radius:10px;cursor:pointer;width:100%;box-sizing:border-box;">
+                                <button class="clean-btn-card-action"
+                                    onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_creditos') : (window.location.hash='#sec_creditos')"
+                                    style="background:#173789;color:#ffffff;border-color:#173789;font-weight:700;font-size:0.92rem;padding:0.75rem 1.25rem;border-radius:10px;cursor:pointer;width:100%;box-sizing:border-box;">
                                     Solicitar este Crédito en Agencia
                                 </button>
-                                <a href="tel:77957795" style="font-size:0.8rem;font-weight:700;color:#173789;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> <span>O cotiza con un asesor al PBX: 7795-7795</span>
+                                <a href="tel:77957795"
+                                    style="font-size:0.8rem;font-weight:700;color:#173789;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                                        </path>
+                                    </svg> <span>O cotiza con un asesor al PBX: 7795-7795</span>
                                 </a>
                             </div>
                         </div>
@@ -507,31 +659,46 @@
                         <div class="clean-sim-form-col">
                             <!-- Monto de Inversión -->
                             <div style="margin-bottom:1.35rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
-                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Monto de Inversión (Escribe o desliza)</label>
-                                    <span style="font-size:0.75rem;color:#64748b;">(Separación automática con comas)</span>
-                                </div>
-                                
-                                <div style="position:relative;margin-bottom:0.75rem;">
-                                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#173789;font-size:1.1rem;">Q</span>
-                                    <input type="text" id="input-ahorro-monto" value="10,000" placeholder="Ej. 500,000" style="width:100%;box-sizing:border-box;padding:0.7rem 0.85rem 0.7rem 2.2rem;border:2px solid #59B8A4;border-radius:10px;font-family:inherit;font-size:1.15rem;font-weight:800;color:#0f172a;outline:none;background:#f8faff;" />
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
+                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Monto de Inversión
+                                        (Escribe o desliza)</label>
+                                    <span style="font-size:0.75rem;color:#64748b;">(Separación automática con
+                                        comas)</span>
                                 </div>
 
-                                <input type="range" id="range-ahorro-monto" min="1000" max="1000000" step="1000" value="10000" style="width:100%;box-sizing:border-box;accent-color:#59B8A4;cursor:pointer;" />
-                                
+                                <div style="position:relative;margin-bottom:0.75rem;">
+                                    <span
+                                        style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#173789;font-size:1.1rem;">Q</span>
+                                    <input type="text" id="input-ahorro-monto" value="10,000" placeholder="Ej. 500,000"
+                                        style="width:100%;box-sizing:border-box;padding:0.7rem 0.85rem 0.7rem 2.2rem;border:2px solid #59B8A4;border-radius:10px;font-family:inherit;font-size:1.15rem;font-weight:800;color:#0f172a;outline:none;background:#f8faff;" />
+                                </div>
+
+                                <input type="range" id="range-ahorro-monto" min="1000" max="1000000" step="1000"
+                                    value="10000"
+                                    style="width:100%;box-sizing:border-box;accent-color:#59B8A4;cursor:pointer;" />
+
                                 <div class="clean-sim-minmax-grid">
-                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
-                                        <label style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Inversión Mínima</label>
+                                    <div
+                                        style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
+                                        <label
+                                            style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Inversión
+                                            Mínima</label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <span style="font-weight:700;color:#64748b;font-size:0.8rem;">Q</span>
-                                            <input type="text" id="input-ahorro-min" value="1,000" style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
+                                            <input type="text" id="input-ahorro-min" value="1,000"
+                                                style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
                                         </div>
                                     </div>
-                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
-                                        <label style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Inversión Máxima</label>
+                                    <div
+                                        style="background:#f8fafc;border:1px solid #e2e8f0;padding:6px 10px;border-radius:8px;box-sizing:border-box;min-width:0;">
+                                        <label
+                                            style="font-size:0.7rem;font-weight:700;color:#64748b;display:block;text-transform:uppercase;">Inversión
+                                            Máxima</label>
                                         <div style="display:flex;align-items:center;gap:4px;">
                                             <span style="font-weight:700;color:#64748b;font-size:0.8rem;">Q</span>
-                                            <input type="text" id="input-ahorro-max" value="1,000,000" style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
+                                            <input type="text" id="input-ahorro-max" value="1,000,000"
+                                                style="width:100%;border:none;background:transparent;font-weight:700;color:#334155;font-size:0.85rem;padding:0;outline:none;" />
                                         </div>
                                     </div>
                                 </div>
@@ -539,12 +706,17 @@
 
                             <!-- Plazo de la Inversión -->
                             <div style="margin-bottom:1rem;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
-                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Plazo de la Inversión</label>
-                                    <span id="disp-ahorro-plazo" style="font-size:0.95rem;font-weight:800;color:#0d9488;">365 Días (1 Año)</span>
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:4px;">
+                                    <label style="font-size:0.88rem;font-weight:700;color:#1e293b;">Plazo de la
+                                        Inversión</label>
+                                    <span id="disp-ahorro-plazo"
+                                        style="font-size:0.95rem;font-weight:800;color:#0d9488;">365 Días (1 Año)</span>
                                 </div>
-                                <input type="range" id="range-ahorro-plazo" min="90" max="1825" step="90" value="365" style="width:100%;box-sizing:border-box;accent-color:#59B8A4;cursor:pointer;" />
-                                <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-top:2px;">
+                                <input type="range" id="range-ahorro-plazo" min="90" max="1825" step="90" value="365"
+                                    style="width:100%;box-sizing:border-box;accent-color:#59B8A4;cursor:pointer;" />
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-top:2px;">
                                     <span>90 Días</span><span>365 Días (1 Año)</span><span>1,825 Días (5 Años)</span>
                                 </div>
                             </div>
@@ -552,17 +724,28 @@
 
                         <!-- Resultado Ahorro -->
                         <div class="clean-sim-result-card ahorro">
-                            <span style="font-size:0.76rem;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:2px;">Ganancia Estimada en Intereses</span>
-                            <div id="calc-ahorro-ganancia" class="clean-sim-quote-amount" style="color:#065f46;">Q 650.00</div>
-                            
+                            <span
+                                style="font-size:0.76rem;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:2px;">Ganancia
+                                Estimada en Intereses</span>
+                            <div id="calc-ahorro-ganancia" class="clean-sim-quote-amount" style="color:#065f46;">Q
+                                650.00</div>
+
                             <div class="clean-sim-details-list" style="color:#334155;border-top:1.5px solid #a7f3d0;">
-                                <div class="clean-sim-details-row"><span>Capital al Vencimiento:</span><strong id="calc-ahorro-total" style="color:#065f46;font-weight:800;">Q 10,650.00</strong></div>
-                                <div class="clean-sim-details-row"><span>Tasa Preferencial MICOOPE:</span><strong id="calc-ahorro-tasa" style="color:#0d9488;font-weight:800;">6.50% Anual</strong></div>
-                                <div class="clean-sim-details-row"><span>Protección y Solvencia:</span><strong style="color:#0f172a;font-weight:700;">Fondo de Garantía MICOOPE</strong></div>
-                                <div class="clean-sim-details-row"><span>Disponibilidad de Pago:</span><strong style="color:#0f172a;font-weight:700;">Mensual o al Vencimiento</strong></div>
+                                <div class="clean-sim-details-row"><span>Capital al Vencimiento:</span><strong
+                                        id="calc-ahorro-total" style="color:#065f46;font-weight:800;">Q
+                                        10,650.00</strong></div>
+                                <div class="clean-sim-details-row"><span>Tasa Preferencial MICOOPE:</span><strong
+                                        id="calc-ahorro-tasa" style="color:#0d9488;font-weight:800;">6.50%
+                                        Anual</strong></div>
+                                <div class="clean-sim-details-row"><span>Protección y Solvencia:</span><strong
+                                        style="color:#0f172a;font-weight:700;">Fondo de Garantía MICOOPE</strong></div>
+                                <div class="clean-sim-details-row"><span>Disponibilidad de Pago:</span><strong
+                                        style="color:#0f172a;font-weight:700;">Mensual o al Vencimiento</strong></div>
                             </div>
 
-                            <button class="clean-btn-card-action" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')" style="background:#059669;color:#ffffff;border-color:#059669;font-weight:700;font-size:0.92rem;padding:0.75rem 1.25rem;border-radius:10px;cursor:pointer;width:100%;box-sizing:border-box;">
+                            <button class="clean-btn-card-action"
+                                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_ahorros') : (window.location.hash='#sec_ahorros')"
+                                style="background:#059669;color:#ffffff;border-color:#059669;font-weight:700;font-size:0.92rem;padding:0.75rem 1.25rem;border-radius:10px;cursor:pointer;width:100%;box-sizing:border-box;">
                                 Abrir Cuenta a Plazo Fijo
                             </button>
                         </div>
@@ -585,7 +768,8 @@
                         <img src="assets/logo_composite.png" alt="COLUA MICOOPE R.L." class="clean-footer-logo" />
                     </div>
                     <p class="clean-footer-desc">
-                        Entidad cooperativa federada al Sistema MICOOPE. Solidez, confianza y desarrollo financiero cooperativo con sentido humano en Guatemala.
+                        Entidad cooperativa federada al Sistema MICOOPE. Solidez, confianza y desarrollo financiero
+                        cooperativo con sentido humano en Guatemala.
                     </p>
                 </div>
 
@@ -613,7 +797,8 @@
                 <div class="clean-footer-col">
                     <h4 class="clean-footer-col-header">SEGURIDAD Y NORMATIVA</h4>
                     <p class="clean-footer-normative-text">
-                        Supervisados por la Inspección General de Cooperativas (INGECOP) y respaldados por el Fondo de Garantía MICOOPE.
+                        Supervisados por la Inspección General de Cooperativas (INGECOP) y respaldados por el Fondo de
+                        Garantía MICOOPE.
                     </p>
                     <div>
                         <a href="tel:77957795" class="clean-footer-pbx-link">PBX: (502) 7795-7795</a>
@@ -626,8 +811,12 @@
                 <div class="clean-footer-bottom-wrap">
                     <span>© 2026 COLUA MICOOPE R.L. Todos los derechos reservados.</span>
                     <div class="clean-footer-links-inline">
-                        <a href="#terminos" onclick="event.preventDefault(); window.app ? window.app.showModal({title:'Términos de Servicio', body:'Cooperativa COLUA R.L. opera bajo los estándares del Sistema MICOOPE y las leyes cooperativas vigentes en Guatemala.'}) : alert('Términos de Servicio COLUA R.L.');">Términos de Servicio</a>
-                        <a href="#privacidad" onclick="event.preventDefault(); window.app ? window.app.showModal({title:'Políticas de Privacidad', body:'Tus datos personales y financieros están protegidos bajo estrictos protocolos de confidencialidad cooperativa.'}) : alert('Políticas de Privacidad COLUA R.L.');">Políticas de Privacidad</a>
+                        <a href="#terminos"
+                            onclick="event.preventDefault(); window.app ? window.app.showModal({title:'Términos de Servicio', body:'Cooperativa COLUA R.L. opera bajo los estándares del Sistema MICOOPE y las leyes cooperativas vigentes en Guatemala.'}) : alert('Términos de Servicio COLUA R.L.');">Términos
+                            de Servicio</a>
+                        <a href="#privacidad"
+                            onclick="event.preventDefault(); window.app ? window.app.showModal({title:'Políticas de Privacidad', body:'Tus datos personales y financieros están protegidos bajo estrictos protocolos de confidencialidad cooperativa.'}) : alert('Políticas de Privacidad COLUA R.L.');">Políticas
+                            de Privacidad</a>
                     </div>
                 </div>
             </div>
@@ -636,29 +825,34 @@
 
     <div id="bottom-nav-root">
         <nav class="bottom-nav" id="bottom-nav" aria-label="Navegación Rápida">
-            <div class="bottom-nav-item" data-route="sec_servicios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">
+            <div class="bottom-nav-item" data-route="sec_servicios"
+                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_servicios') : (window.location.hash='#sec_servicios')">
                 <img src="assets/servicios_digitales.png" alt="" />
                 <span>Servicios</span>
             </div>
 
-            <div class="bottom-nav-item" data-route="sec_agencias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">
+            <div class="bottom-nav-item" data-route="sec_agencias"
+                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">
                 <img src="assets/ubicacion.png" alt="" />
                 <span>Agencias</span>
             </div>
 
-            <div class="bottom-nav-item center-home active" data-route="sec_home" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">
+            <div class="bottom-nav-item center-home active" data-route="sec_home"
+                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#inicio')">
                 <div class="icon-circle">
                     <img src="assets/distintivo_colua.png" alt="Inicio" style="object-fit: contain; padding: 2px;" />
                 </div>
                 <span>Inicio</span>
             </div>
 
-            <div class="bottom-nav-item" data-route="sec_beneficios" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">
+            <div class="bottom-nav-item" data-route="sec_beneficios"
+                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_beneficios') : (window.location.hash='#sec_beneficios')">
                 <img src="assets/beneficios.png" alt="" />
                 <span>Beneficios</span>
             </div>
 
-            <div class="bottom-nav-item" data-route="sec_noticias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">
+            <div class="bottom-nav-item" data-route="sec_noticias"
+                onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">
                 <img src="assets/noticias_colua.png" alt="" />
                 <span>Noticias</span>
             </div>
@@ -670,4 +864,5 @@
          ============================================== -->
     <div id="colua-chatbot-root"></div>
 </body>
+
 </html>

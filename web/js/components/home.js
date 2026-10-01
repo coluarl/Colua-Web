@@ -45,18 +45,19 @@ class HomeComponent {
       console.error('Error cargando secciones en Home:', e);
     }
 
-    // 2. Tarjetas canónicas base aseguradas (10 pantallas fijas)
+    // 2. Tarjetas canónicas base aseguradas (11 pantallas fijas)
     const canonicalBaseCards = [
-      { id: "home_ahorro", title: "Ahorros", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", iconName: "ahorros", targetSectionId: "sec_ahorros", imageUrl: "assets/ahorros.png" },
-      { id: "home_credito", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", iconName: "credito", targetSectionId: "sec_creditos", imageUrl: "assets/credito.png" },
-      { id: "home_seguros", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", iconName: "seguro", targetSectionId: "sec_seguros", imageUrl: "assets/seguro.png" },
-      { id: "home_remesas", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", iconName: "remesa", targetSectionId: "sec_remesas", imageUrl: "assets/remesa.png" },
-      { id: "home_beneficios", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", iconName: "beneficios", targetSectionId: "sec_beneficios", imageUrl: "assets/beneficios.png" },
-      { id: "home_agencias", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", iconName: "ubicacion", targetSectionId: "sec_agencias", imageUrl: "assets/ubicacion.png" },
-      { id: "home_servicios", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", iconName: "servicios_digitales", targetSectionId: "sec_servicios", imageUrl: "assets/servicios_digitales.png" },
-      { id: "home_noticias", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", iconName: "noticias_colua", targetSectionId: "sec_noticias", imageUrl: "assets/noticias.png" },
-      { id: "home_sostenibilidad", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png" },
-      { id: "home_nosotros", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", iconName: "public_service", targetSectionId: "sec_nosotros", imageUrl: "assets/distintivo_colua.png" }
+      { id: "home_asociate", title: "Como asociarte", subtitle: "DPI, Recibo de Luz, Q100.00", description: "DPI, Recibo de Luz, Q100.00", iconName: "ahorros", targetSectionId: "form:form_asociate", buttonAction: "form:form_asociate", imageUrl: "assets/ahorros.png", displayOrder: 1, orderIndex: 1 },
+      { id: "home_ahorro", title: "Cuentas de Ahorros Infantil y Juvenil", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", iconName: "ahorros", targetSectionId: "sec_ahorros", buttonAction: "sec_ahorros", imageUrl: "assets/ahorros.png", displayOrder: 2, orderIndex: 2 },
+      { id: "home_credito", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", iconName: "credito", targetSectionId: "sec_creditos", buttonAction: "sec_creditos", imageUrl: "assets/credito.png", displayOrder: 3, orderIndex: 3 },
+      { id: "home_seguros", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", iconName: "seguro", targetSectionId: "sec_seguros", buttonAction: "sec_seguros", imageUrl: "assets/seguro.png", displayOrder: 4, orderIndex: 4 },
+      { id: "home_remesas", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", iconName: "remesa", targetSectionId: "sec_remesas", buttonAction: "sec_remesas", imageUrl: "assets/remesa.png", displayOrder: 5, orderIndex: 5 },
+      { id: "home_beneficios", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", iconName: "beneficios", targetSectionId: "sec_beneficios", buttonAction: "sec_beneficios", imageUrl: "assets/beneficios.png", displayOrder: 6, orderIndex: 6 },
+      { id: "home_agencias", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", iconName: "ubicacion", targetSectionId: "sec_agencias", buttonAction: "sec_agencias", imageUrl: "assets/ubicacion.png", displayOrder: 7, orderIndex: 7 },
+      { id: "home_servicios", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", iconName: "servicios_digitales", targetSectionId: "sec_servicios", buttonAction: "sec_servicios", imageUrl: "assets/servicios_digitales.png", displayOrder: 8, orderIndex: 8 },
+      { id: "home_noticias", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", iconName: "noticias_colua", targetSectionId: "sec_noticias", buttonAction: "sec_noticias", imageUrl: "assets/noticias.png", displayOrder: 9, orderIndex: 9 },
+      { id: "home_sostenibilidad", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", buttonAction: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png", displayOrder: 10, orderIndex: 10 },
+      { id: "home_nosotros", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", iconName: "public_service", targetSectionId: "sec_nosotros", buttonAction: "sec_nosotros", imageUrl: "assets/distintivo_colua.png", displayOrder: 11, orderIndex: 11 }
     ];
 
     // 3. Tarjetas activas registradas en sec_home (excluyendo cabecera y banners)
@@ -134,7 +135,7 @@ class HomeComponent {
 
     // Hero, Banners y Simulación dinámicos desde sec_home
     const heroItem = homeItems.find(i => i.id === 'home_hero_header');
-    const heroTitle = heroItem?.title || 'Hola, bienvenido a <span class="brand-blue-accent">COLUA MICOOPE</span>';
+    const heroTitle = heroItem?.title || 'Hola, bienvenido a COLUA MICOOPE';
     const heroSubtitle = heroItem?.subtitle || 'El lado humano de los ahorros y créditos cooperativos. Selecciona un área para comenzar tu gestión.';
 
     const pbxItem = homeItems.find(i => i.id === 'home_banner_pbx');
@@ -216,9 +217,9 @@ class HomeComponent {
             const lowerSub = cardSubtitle.toLowerCase();
             const rawId = (s.id || '').toLowerCase();
             // Sanitizar solo si contiene strings residuales de versiones anteriores
-            if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorroahorro') || lowerTitle.includes('ahorro infantil')) {
-              cardTitle = cardTitle.includes('ahorro infantil') ? 'Ahorros' : cardTitle.replace(/ahorroahorro/gi, 'Ahorros');
-              if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorro infantil')) cardSubtitle = 'Cuentas de ahorro';
+            if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorroahorro')) {
+              cardTitle = cardTitle.replace(/ahorroahorro/gi, 'Ahorros');
+              if (lowerSub.includes('ahorro!')) cardSubtitle = 'Cuentas de ahorro';
             } else if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('créditocrédito') || lowerTitle.includes('productivo, consumo')) {
               cardTitle = cardTitle.includes('productivo, consumo') ? 'Créditos' : cardTitle.replace(/créditocrédito/gi, 'Créditos');
               if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('productivo, consumo')) cardSubtitle = 'Líneas de crédito';

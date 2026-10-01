@@ -13,6 +13,133 @@ class ColuaRepository {
     return window.supabaseStorageManager;
   }
 
+  _cleanDoc(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return obj.getTime();
+    if (Array.isArray(obj)) {
+      return obj.map(item => this._cleanDoc(item)).filter(item => item !== undefined);
+    }
+    const clean = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        clean[key] = (val && typeof val === 'object' && !(val instanceof Date))
+          ? this._cleanDoc(val)
+          : val;
+      }
+    }
+    return clean;
+  }
+
+  async ensureFirebaseAuthAdmin(userProfile = null) {
+    if (!this.fb) return false;
+    try {
+      const auth = this.fb.auth;
+      const db = this.fb.db;
+      if (!auth) return false;
+
+      let currentUser = auth.currentUser;
+      if (!currentUser && typeof auth.signInAnonymously === 'function') {
+        try {
+          const anonRes = await auth.signInAnonymously();
+          currentUser = anonRes.user;
+          console.log('[ColuaRepo] Sesión Firebase Auth iniciada para sincronización cloud:', currentUser.uid);
+        } catch (anonErr) {
+          console.warn('[ColuaRepo] Advertencia en signInAnonymously:', anonErr.message || anonErr);
+        }
+      }
+
+      if (currentUser && db) {
+        const adminData = {
+          firebaseUid: currentUser.uid,
+          tipoUsuario: 'ADMIN',
+          role: 'superadmin',
+          nombre: userProfile?.nombre || 'Super Administrador COLUA',
+          email: userProfile?.email || currentUser.email || 'admin@colua.com.gt',
+          updatedAt: Date.now()
+        };
+        try {
+          await db.collection('usuarios').doc(currentUser.uid).set(this._cleanDoc(adminData), { merge: true });
+        } catch (errProfile) {
+          console.warn('[ColuaRepo] Advertencia asegurando /usuarios/{uid}:', errProfile.message || errProfile);
+        }
+      }
+      return !!currentUser;
+    } catch (e) {
+      console.warn('[ColuaRepo] Error en ensureFirebaseAuthAdmin:', e);
+      return false;
+    }
+  }
+
+  // --- MOTOR DE AUTO-PUBLICACIÓN EN VIVO (Cloud & Local) ---
+  async _autoPublishChange(logAction = 'AUTO_PUBLICACION_CMS', logDetails = 'Cambio sincronizado en la nube.') {
+    const db = this.getLocalDb();
+    const currentVersion = (db.global_config?.published_version || 1) + 1;
+    if (!db.global_config) db.global_config = {};
+    db.global_config.published_version = currentVersion;
+    db.global_config.last_sync_timestamp = Date.now();
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.ensureFirebaseAuthAdmin();
+        await this.fb.collection('config').doc('published_config').set({
+          version: currentVersion,
+          lastSyncTimestamp: Date.now(),
+          updatedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador COLUA'
+        }, { merge: true });
+        console.log(`[COLUA CMS] Auto-publicación en Firestore: Versión v${currentVersion}`);
+      } catch (e) {
+        console.warn('[COLUA CMS] Advertencia al auto-publicar versión:', e.message || e);
+      }
+    }
+
+    if (logAction) {
+      try {
+        await this.logAudit({
+          action: logAction,
+          performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
+          details: logDetails
+        });
+      } catch (e) {}
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('colua-data-synced', { detail: { timestamp: Date.now(), version: currentVersion } }));
+    } catch (e) {}
+
+    return currentVersion;
+  }
+
+  // Sincroniza en tiempo real los botones y sub-botones del navbar superior hacia Firestore
+  async _syncTopNavToCloud() {
+    const db = this.getLocalDb();
+    const items = db.top_nav_items || this.getDefaultTopNavItems();
+    if (this.fb && this.fb.db) {
+      try {
+        await this.ensureFirebaseAuthAdmin();
+        const cleanItems = this._cleanDoc(items);
+        await this.fb.collection('config').doc('top_nav').set({
+          items: cleanItems,
+          updatedAt: Date.now()
+        }, { merge: true });
+        await this.fb.collection('global_config').doc('main').set({
+          top_nav_items: cleanItems,
+          updatedAt: Date.now()
+        }, { merge: true });
+        console.log('[ColuaRepo] Menú superior sincronizado en Firestore config/top_nav.');
+      } catch (e) {
+        console.warn('[ColuaRepo] Error sincronizando top_nav en Firestore:', e.message || e);
+      }
+    }
+    await this._autoPublishChange('SINCRONIZAR_NAVBAR', `Menú de navegación actualizado con ${items.length} botones.`);
+    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+      window.navbarComponent.refresh();
+    }
+    if (window.sidebarComponent && typeof window.sidebarComponent.refresh === 'function') {
+      window.sidebarComponent.refresh();
+    }
+  }
+
   // Inicialización de persistencia local (Copia espejo en localStorage para modo offline y borradores)
   initLocalStorage() {
     const raw = localStorage.getItem(this.localStorageKey);
@@ -27,8 +154,16 @@ class ColuaRepository {
           db.sections = db.sections.filter(s => s.id !== 'sec_comunidad' && s.slug !== 'comunidad' && s.title !== 'Comunidad');
           changed = true;
         }
-        if (db.navigation_items && db.navigation_items.some(n => n.targetSectionId === 'sec_comunidad' || n.id === 'nav_comunidad')) {
-          db.navigation_items = db.navigation_items.filter(n => n.targetSectionId !== 'sec_comunidad' && n.id !== 'nav_comunidad');
+        if (db.navigation_items && db.navigation_items.some(n => n.targetSectionId === 'sec_comunidad' || n.id === 'nav_comunidad' || n.targetSectionId === 'admin' || n.id === 'side_admin')) {
+          db.navigation_items = db.navigation_items.filter(n => n.targetSectionId !== 'sec_comunidad' && n.id !== 'nav_comunidad' && n.targetSectionId !== 'admin' && n.id !== 'side_admin');
+          changed = true;
+        }
+        if (db.top_nav_items && db.top_nav_items.some(n => n.targetSectionId === 'admin' || n.id === 'topnav_admin')) {
+          db.top_nav_items = db.top_nav_items.filter(n => n.targetSectionId !== 'admin' && n.id !== 'topnav_admin');
+          changed = true;
+        }
+        if (db.global_config && db.global_config.top_nav_items && db.global_config.top_nav_items.some(n => n.targetSectionId === 'admin' || n.id === 'topnav_admin')) {
+          db.global_config.top_nav_items = db.global_config.top_nav_items.filter(n => n.targetSectionId !== 'admin' && n.id !== 'topnav_admin');
           changed = true;
         }
         if (db.content_items && db.content_items.some(i => i.sectionId === 'sec_comunidad')) {
@@ -61,19 +196,20 @@ class ColuaRepository {
 
     // Mapa canónico limpio de títulos y subtítulos para las tarjetas de Inicio
     const canonicalHomeMap = {
-      'home_ahorro': { title: 'Ahorros', subtitle: 'Cuentas de ahorro', description: 'Cuentas de ahorro', targetSectionId: 'sec_ahorros', imageUrl: 'assets/ahorros.png' },
-      'home_credito': { title: 'Créditos', subtitle: 'Líneas de crédito', description: 'Líneas de crédito', targetSectionId: 'sec_creditos', imageUrl: 'assets/credito.png' },
-      'home_seguros': { title: 'Seguros', subtitle: 'Protección y vida', description: 'Protección y vida', targetSectionId: 'sec_seguros', imageUrl: 'assets/seguro.png' },
-      'home_remesas': { title: 'Remesas', subtitle: 'Recibe tu dinero', description: 'Recibe tu dinero', targetSectionId: 'sec_remesas', imageUrl: 'assets/remesa.png' },
-      'home_beneficios': { title: 'Tus 6 Beneficios', subtitle: 'Hospitalización, seguro de ahorrantes y beneficio de oro', description: 'Hospitalización, seguro de ahorrantes y beneficio de oro', targetSectionId: 'sec_beneficios', imageUrl: 'assets/beneficios.png' },
-      'home_agencias': { title: 'Agencias & PBX', subtitle: 'Nuestras ubicaciones', description: '25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez', targetSectionId: 'sec_agencias', imageUrl: 'assets/ubicacion.png' },
-      'home_servicios': { title: 'Servicios Digitales', subtitle: 'Banca en línea', description: 'MICOOPE en Línea, App Móvil y Notificaciones SMS', targetSectionId: 'sec_servicios', imageUrl: 'assets/servicios_digitales.png' },
-      'home_noticias': { title: 'Noticias & Novedades', subtitle: 'Actualidad COLUA', description: 'Comunicados oficiales, jornadas ecológicas y convocatorias', targetSectionId: 'sec_noticias', imageUrl: 'assets/noticias.png' },
-      'home_sostenibilidad': { title: 'Sostenibilidad Cooperativa', subtitle: 'Cursos y centros de innovación', description: 'Becas educativas, talleres productivos y centros de innovación', targetSectionId: 'sec_sostenibilidad', imageUrl: 'assets/sostenibilidad_cooperativa.png' },
-      'home_nosotros': { title: 'Nosotros', subtitle: 'Valores cooperativos, historia y propósito', description: 'Valores cooperativos, historia y propósito', targetSectionId: 'sec_nosotros', imageUrl: 'assets/distintivo_colua.png' }
+      'home_asociate': { title: 'Como asociarte', subtitle: 'DPI, Recibo de Luz, Q100.00', description: 'Requisitos para asociarte a COLUA R.L.', targetSectionId: 'form:form_asociate', buttonAction: 'form:form_asociate', imageUrl: 'assets/ahorros.png', displayOrder: 1 },
+      'home_ahorro': { title: 'Cuentas de Ahorros Infantil y Juvenil', subtitle: 'Cuentas de ahorro', description: 'Cuentas de ahorro', targetSectionId: 'sec_ahorros', buttonAction: 'sec_ahorros', imageUrl: 'assets/ahorros.png', displayOrder: 2 },
+      'home_credito': { title: 'Créditos', subtitle: 'Líneas de crédito', description: 'Líneas de crédito', targetSectionId: 'sec_creditos', buttonAction: 'sec_creditos', imageUrl: 'assets/credito.png', displayOrder: 3 },
+      'home_seguros': { title: 'Seguros', subtitle: 'Protección y vida', description: 'Protección y vida', targetSectionId: 'sec_seguros', buttonAction: 'sec_seguros', imageUrl: 'assets/seguro.png', displayOrder: 4 },
+      'home_remesas': { title: 'Remesas', subtitle: 'Recibe tu dinero', description: 'Recibe tu dinero', targetSectionId: 'sec_remesas', buttonAction: 'sec_remesas', imageUrl: 'assets/remesa.png', displayOrder: 5 },
+      'home_beneficios': { title: 'Tus 6 Beneficios', subtitle: 'Hospitalización, seguro de ahorrantes y beneficio de oro', description: 'Hospitalización, seguro de ahorrantes y beneficio de oro', targetSectionId: 'sec_beneficios', buttonAction: 'sec_beneficios', imageUrl: 'assets/beneficios.png', displayOrder: 6 },
+      'home_agencias': { title: 'Agencias & PBX', subtitle: 'Nuestras ubicaciones', description: '25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez', targetSectionId: 'sec_agencias', buttonAction: 'sec_agencias', imageUrl: 'assets/ubicacion.png', displayOrder: 7 },
+      'home_servicios': { title: 'Servicios Digitales', subtitle: 'Banca en línea', description: 'MICOOPE en Línea, App Móvil y Notificaciones SMS', targetSectionId: 'sec_servicios', buttonAction: 'sec_servicios', imageUrl: 'assets/servicios_digitales.png', displayOrder: 8 },
+      'home_noticias': { title: 'Noticias & Novedades', subtitle: 'Actualidad COLUA', description: 'Comunicados oficiales, jornadas ecológicas y convocatorias', targetSectionId: 'sec_noticias', buttonAction: 'sec_noticias', imageUrl: 'assets/noticias.png', displayOrder: 9 },
+      'home_sostenibilidad': { title: 'Sostenibilidad Cooperativa', subtitle: 'Cursos y centros de innovación', description: 'Becas educativas, talleres productivos y centros de innovación', targetSectionId: 'sec_sostenibilidad', buttonAction: 'sec_sostenibilidad', imageUrl: 'assets/sostenibilidad_cooperativa.png', displayOrder: 10 },
+      'home_nosotros': { title: 'Nosotros', subtitle: 'Valores cooperativos, historia y propósito', description: 'Valores cooperativos, historia y propósito', targetSectionId: 'sec_nosotros', buttonAction: 'sec_nosotros', imageUrl: 'assets/distintivo_colua.png', displayOrder: 11 }
     };
 
-    // Garantizar que las 10 tarjetas canónicas de Inicio siempre existan y estén activas
+    // Garantizar que las 11 tarjetas canónicas de Inicio siempre existan y estén activas
     Object.keys(canonicalHomeMap).forEach((cardId, index) => {
       const existing = db.content_items.find(i => i.id === cardId);
       if (!existing) {
@@ -86,9 +222,9 @@ class ColuaRepository {
           description: canonicalInfo.description,
           shortDescription: canonicalInfo.subtitle,
           targetSectionId: canonicalInfo.targetSectionId,
-          buttonAction: canonicalInfo.targetSectionId,
+          buttonAction: canonicalInfo.buttonAction || canonicalInfo.targetSectionId,
           imageUrl: canonicalInfo.imageUrl,
-          displayOrder: index + 1,
+          displayOrder: canonicalInfo.displayOrder || (index + 1),
           isVisible: true,
           isEnabled: true,
           isDraft: false,
@@ -98,7 +234,15 @@ class ColuaRepository {
       } else {
         if (existing.isVisible === false) { existing.isVisible = true; changed = true; }
         if (existing.isEnabled === false) { existing.isEnabled = true; changed = true; }
-        if (!existing.displayOrder) { existing.displayOrder = index + 1; changed = true; }
+        if (canonicalHomeMap[cardId].displayOrder && existing.displayOrder !== canonicalHomeMap[cardId].displayOrder) {
+          existing.displayOrder = canonicalHomeMap[cardId].displayOrder;
+          changed = true;
+        }
+        if (canonicalHomeMap[cardId].title && (cardId === 'home_asociate' || cardId === 'home_ahorro') && existing.title !== canonicalHomeMap[cardId].title) {
+          existing.title = canonicalHomeMap[cardId].title;
+          existing.subtitle = canonicalHomeMap[cardId].subtitle;
+          changed = true;
+        }
         if (!existing.targetSectionId) { existing.targetSectionId = canonicalHomeMap[cardId].targetSectionId; changed = true; }
       }
     });
@@ -107,6 +251,17 @@ class ColuaRepository {
     db.content_items.forEach(item => {
       if (this._cleanItemIfInverted(item)) {
         changed = true;
+      }
+    });
+
+    // Garantizar que las 3 plazas vacantes canónicas de Bolsa de Empleo existan
+    ['item_vacante_coordinador', 'item_vacante_cajero', 'item_vacante_asesor_credito'].forEach(jobId => {
+      if (!db.content_items.some(i => i.id === jobId)) {
+        const defJob = defaultData.content_items.find(i => i.id === jobId);
+        if (defJob) {
+          db.content_items.push(defJob);
+          changed = true;
+        }
       }
     });
 
@@ -157,11 +312,71 @@ class ColuaRepository {
     if (!db.forms || db.forms.length === 0) {
       db.forms = defaultData.forms || [];
       changed = true;
+    } else {
+      // Migración automática del formulario de afiliación para soportar dos fotos de DPI (Frente y Reverso)
+      const fAsoc = db.forms.find(f => f.id === 'form_asociate');
+      if (fAsoc && Array.isArray(fAsoc.fields)) {
+        const hasDpiFrente = fAsoc.fields.some(f => f.id === 'foto_dpi_frente');
+        if (!hasDpiFrente) {
+          const oldDpiIndex = fAsoc.fields.findIndex(f => f.id === 'foto_dpi');
+          const dualDpiFields = [
+            { id: "foto_dpi_frente", label: "Foto de tu DPI - Frente (Anverso)", type: "file", required: false, placeholder: "Tomar o subir foto de frente del DPI" },
+            { id: "foto_dpi_reverso", label: "Foto de tu DPI - Atrás (Reverso)", type: "file", required: false, placeholder: "Tomar o subir foto de reverso del DPI" }
+          ];
+          if (oldDpiIndex >= 0) {
+            fAsoc.fields.splice(oldDpiIndex, 1, ...dualDpiFields);
+          } else {
+            const dpiIdx = fAsoc.fields.findIndex(f => f.id === 'dpi');
+            if (dpiIdx >= 0) {
+              fAsoc.fields.splice(dpiIdx + 1, 0, ...dualDpiFields);
+            } else {
+              fAsoc.fields.push(...dualDpiFields);
+            }
+          }
+          changed = true;
+        }
+      }
     }
 
-    if (!db.form_submissions) {
-      db.form_submissions = [];
+    if (!db.form_submissions || db.form_submissions.length === 0) {
+      db.form_submissions = defaultData.form_submissions || [];
       changed = true;
+    } else {
+      // Normalizar registros previos para asegurar que fotoDpiFrente y fotoDpiReverso existan y estén limpios
+      db.form_submissions.forEach(sub => {
+        if (!sub.fotoDpiFrente && sub.fotoDpi) sub.fotoDpiFrente = sub.fotoDpi;
+        if (!sub.fotoDpiFrente && sub.respuestas) {
+          sub.fotoDpiFrente = sub.respuestas['Foto de tu DPI - Frente (Anverso)'] || sub.respuestas['Foto de tu DPI (Ambos lados)'] || '';
+        }
+        if (!sub.fotoDpiReverso && sub.respuestas) {
+          sub.fotoDpiReverso = sub.respuestas['Foto de tu DPI - Atrás (Reverso)'] || '';
+        }
+        if (!sub.dpi && sub.respuestas && sub.respuestas['Número de DPI / CUI']) {
+          sub.dpi = sub.respuestas['Número de DPI / CUI'];
+        }
+        // Reparar cualquier SVG sin codificar en base64 de demos anteriores
+        if (typeof sub.fotoDpiFrente === 'string' && sub.fotoDpiFrente.includes('<svg')) {
+          sub.fotoDpiFrente = defaultData.form_submissions?.[0]?.fotoDpiFrente || '';
+          changed = true;
+        }
+        if (typeof sub.fotoDpiReverso === 'string' && sub.fotoDpiReverso.includes('<svg')) {
+          sub.fotoDpiReverso = defaultData.form_submissions?.[0]?.fotoDpiReverso || '';
+          changed = true;
+        }
+        if (sub.respuestas && typeof sub.respuestas === 'object') {
+          Object.keys(sub.respuestas).forEach(k => {
+            const v = sub.respuestas[k];
+            if (typeof v === 'string' && v.includes('<svg')) {
+              if (k.toLowerCase().includes('reverso') || k.toLowerCase().includes('atrás')) {
+                sub.respuestas[k] = defaultData.form_submissions?.[0]?.fotoDpiReverso || '';
+              } else {
+                sub.respuestas[k] = defaultData.form_submissions?.[0]?.fotoDpiFrente || '';
+              }
+              changed = true;
+            }
+          });
+        }
+      });
     }
 
     if (!db.top_nav_items || db.top_nav_items.length === 0) {
@@ -182,7 +397,7 @@ class ColuaRepository {
     const titleStr = (item.title || '').trim();
     const subStr = (item.subtitle || item.description || item.shortDescription || '').trim();
 
-    if (titleStr.includes('AhorroAhorro') || titleStr.includes('Ahorro Infantil') || subStr === '¡Ahorro!' || subStr === '¡ahorro!') {
+    if (titleStr.includes('AhorroAhorro') || subStr === '¡Ahorro!' || subStr === '¡ahorro!') {
       item.title = 'Ahorros';
       item.subtitle = 'Cuentas de ahorro';
       changed = true;
@@ -229,6 +444,16 @@ class ColuaRepository {
       localStorage.setItem(this.localStorageKey, JSON.stringify(db));
     } catch (e) {
       console.error('Error guardando en localStorage:', e);
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22 || e.number === -2147024882)) {
+        try {
+          if (db && db.form_submissions && db.form_submissions.length > 5) {
+            db.form_submissions = db.form_submissions.slice(0, 5);
+            localStorage.setItem(this.localStorageKey, JSON.stringify(db));
+          }
+        } catch (retryErr) {
+          console.error('Reintento de guardado tras cuota excedida falló:', retryErr);
+        }
+      }
     }
   }
 
@@ -244,7 +469,8 @@ class ColuaRepository {
       { id: "sec_beneficios", title: "Beneficios", slug: "beneficios", description: "Valor de ser asociado", iconName: "beneficios", accentColor: "#EF8819", displayOrder: 8, isVisible: true, isPublished: true, templateType: "BENEFICIOS" },
       { id: "sec_noticias", title: "Noticias", slug: "noticias", description: "Actualidad COLUA", iconName: "noticias_colua", accentColor: "#E42A67", displayOrder: 9, isVisible: true, isPublished: true, templateType: "NOTICIAS" },
       { id: "sec_nosotros", title: "Nosotros", slug: "nosotros", description: "Valores, objetivos, historia e información institucional", iconName: "public_service", accentColor: "#173789", displayOrder: 10, isVisible: true, isPublished: true, templateType: "NOSOTROS" },
-      { id: "sec_sostenibilidad", title: "Sostenibilidad Cooperativa", slug: "sostenibilidad", description: "Cursos y centros de innovación", iconName: "sostenibilidad_cooperativa", accentColor: "#59B8A4", displayOrder: 11, isVisible: true, isPublished: true, templateType: "SOSTENIBILIDAD" }
+      { id: "sec_sostenibilidad", title: "Sostenibilidad Cooperativa", slug: "sostenibilidad", description: "Cursos y centros de innovación", iconName: "sostenibilidad_cooperativa", accentColor: "#59B8A4", displayOrder: 11, isVisible: true, isPublished: true, templateType: "SOSTENIBILIDAD" },
+      { id: "sec_empleo", title: "Bolsa de Empleo", slug: "empleo", description: "Oportunidades laborales y plazas vacantes en COLUA", iconName: "trabajo", accentColor: "#b45309", displayOrder: 12, isVisible: true, isPublished: true, templateType: "GENERIC" }
     ];
 
     const defaultNavigation = [
@@ -262,8 +488,7 @@ class ColuaRepository {
       { id: "side_remesas", label: "Remesas", iconName: "remesa", targetSectionId: "sec_remesas", type: "SIDEBAR", displayOrder: 4, isVisible: true },
       { id: "side_ahorros", label: "Ahorros", iconName: "ahorros", targetSectionId: "sec_ahorros", type: "SIDEBAR", displayOrder: 5, isVisible: true },
       { id: "side_sostenibilidad", label: "Sostenibilidad Cooperativa", iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", type: "SIDEBAR", displayOrder: 6, isVisible: true },
-      { id: "side_admin", label: "Portal administrativo", iconName: "portal_administrativo", targetSectionId: "admin", type: "SIDEBAR", displayOrder: 7, isVisible: true },
-      { id: "side_logout", label: "Cerrar Sesión", iconName: "cerrar", targetSectionId: "action_logout", type: "SIDEBAR", displayOrder: 8, isVisible: true }
+      { id: "side_logout", label: "Cerrar Sesión", iconName: "cerrar", targetSectionId: "action_logout", type: "SIDEBAR", displayOrder: 7, isVisible: true }
     ];
 
     const defaultAgencias = [
@@ -309,21 +534,22 @@ class ColuaRepository {
     ];
 
     const defaultItems = [
-      // 1. HOME ITEMS (Cabecera, 10 Tarjetas de Servicio, Banners y Simulador)
+      // 1. HOME ITEMS (Cabecera, 11 Tarjetas de Servicio, Banners y Simulador)
       { id: "home_hero_header", sectionId: "sec_home", title: "Hola, bienvenido a COLUA MICOOPE", subtitle: "El lado humano de los ahorros y créditos cooperativos. Selecciona un área para comenzar tu gestión.", description: "Cabecera principal de bienvenida", accentColor: "#173789", displayOrder: 0, isVisible: true, isDraft: false },
-      { id: "home_ahorro", sectionId: "sec_home", title: "Ahorros", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", shortDescription: "Cuentas de ahorro", accentColor: "#59B8A4", displayOrder: 1, iconName: "ahorros", targetSectionId: "sec_ahorros", imageUrl: "assets/ahorros.png", isVisible: true, isDraft: false },
-      { id: "home_credito", sectionId: "sec_home", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", shortDescription: "Líneas de crédito", accentColor: "#173789", displayOrder: 2, iconName: "credito", targetSectionId: "sec_creditos", imageUrl: "assets/credito.png", isVisible: true, isDraft: false },
-      { id: "home_seguros", sectionId: "sec_home", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", shortDescription: "Protección y vida", accentColor: "#EF8819", displayOrder: 3, iconName: "seguro", targetSectionId: "sec_seguros", imageUrl: "assets/seguro.png", isVisible: true, isDraft: false },
-      { id: "home_remesas", sectionId: "sec_home", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", shortDescription: "Recibe tu dinero", accentColor: "#634794", displayOrder: 4, iconName: "remesa", targetSectionId: "sec_remesas", imageUrl: "assets/remesa.png", isVisible: true, isDraft: false },
-      { id: "home_beneficios", sectionId: "sec_home", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", shortDescription: "Hospitalización, seguro de ahorrantes y beneficio de oro", accentColor: "#EF8819", displayOrder: 5, iconName: "beneficios", targetSectionId: "sec_beneficios", imageUrl: "assets/beneficios.png", isVisible: true, isDraft: false },
-      { id: "home_agencias", sectionId: "sec_home", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", shortDescription: "Nuestras ubicaciones", accentColor: "#173789", displayOrder: 6, iconName: "ubicacion", targetSectionId: "sec_agencias", imageUrl: "assets/ubicacion.png", isVisible: true, isDraft: false },
-      { id: "home_servicios", sectionId: "sec_home", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", shortDescription: "Banca en línea", accentColor: "#59B8A4", displayOrder: 7, iconName: "servicios_digitales", targetSectionId: "sec_servicios", imageUrl: "assets/servicios_digitales.png", isVisible: true, isDraft: false },
-      { id: "home_noticias", sectionId: "sec_home", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", shortDescription: "Actualidad COLUA", accentColor: "#E42A67", displayOrder: 8, iconName: "noticias_colua", targetSectionId: "sec_noticias", imageUrl: "assets/noticias.png", isVisible: true, isDraft: false },
-      { id: "home_sostenibilidad", sectionId: "sec_home", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", shortDescription: "Cursos y centros de innovación", accentColor: "#59B8A4", displayOrder: 9, iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png", isVisible: true, isDraft: false },
-      { id: "home_nosotros", sectionId: "sec_home", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", shortDescription: "Valores cooperativos, historia y propósito", accentColor: "#173789", displayOrder: 10, iconName: "public_service", targetSectionId: "sec_nosotros", imageUrl: "assets/distintivo_colua.png", isVisible: true, isDraft: false },
-      { id: "home_banner_pbx", sectionId: "sec_home", title: "Banner: PBX Central", subtitle: "PBX: (502) 7795-7795", description: "Lunes a viernes de 8:00 a 17:00 | Sábados de 8:00 a 12:00 hrs.", shortDescription: "Atención telefónica institucional", buttonText: "PBX: (502) 7795-7795", buttonAction: "tel:77957795", accentColor: "#2563eb", displayOrder: 11, iconName: "telefono", targetSectionId: "tel:77957795", imageUrl: "assets/pbx.png", isVisible: true, isDraft: false },
-      { id: "home_banner_digital", sectionId: "sec_home", title: "Banner: MICOOPE en Línea", subtitle: "Canal Digital Seguro", description: "Ingresar a MICOOPE en Línea", shortDescription: "Acceso web seguro", buttonText: "Ingresar a MICOOPE en Línea", buttonAction: "https://micoopeenlinea.com.gt", accentColor: "#0a1931", displayOrder: 12, iconName: "candado", targetSectionId: "https://micoopeenlinea.com.gt", imageUrl: "assets/micoope_enlinea.png", isVisible: true, isDraft: false },
-      { id: "home_simulador_card", sectionId: "sec_home", title: "Simulador Financiero en Vivo", subtitle: "Monto ilimitado (hasta 1M+), cuotas niveladas y tasas sincronizadas", description: "Herramienta de cálculo en tiempo real", shortDescription: "Herramienta de cálculo en tiempo real", accentColor: "#173789", displayOrder: 13, iconName: "calculadora", targetSectionId: "#simulador-financiero", imageUrl: "assets/distintivo_colua.png", isVisible: true, isDraft: false },
+      { id: "home_asociate", sectionId: "sec_home", title: "Como asociarte", subtitle: "DPI, Recibo de Luz, Q100.00", description: "Requisitos para asociarte a COLUA R.L.", shortDescription: "DPI, Recibo de Luz, Q100.00", accentColor: "#59B8A4", displayOrder: 1, iconName: "ahorros", targetSectionId: "form:form_asociate", buttonAction: "form:form_asociate", imageUrl: "assets/ahorros.png", isVisible: true, isDraft: false },
+      { id: "home_ahorro", sectionId: "sec_home", title: "Cuentas de Ahorros Infantil y Juvenil", subtitle: "Cuentas de ahorro", description: "Cuentas de ahorro", shortDescription: "Cuentas de ahorro", accentColor: "#59B8A4", displayOrder: 2, iconName: "ahorros", targetSectionId: "sec_ahorros", buttonAction: "sec_ahorros", imageUrl: "assets/ahorros.png", isVisible: true, isDraft: false },
+      { id: "home_credito", sectionId: "sec_home", title: "Créditos", subtitle: "Líneas de crédito", description: "Líneas de crédito", shortDescription: "Líneas de crédito", accentColor: "#173789", displayOrder: 3, iconName: "credito", targetSectionId: "sec_creditos", buttonAction: "sec_creditos", imageUrl: "assets/credito.png", isVisible: true, isDraft: false },
+      { id: "home_seguros", sectionId: "sec_home", title: "Seguros", subtitle: "Protección y vida", description: "Protección y vida", shortDescription: "Protección y vida", accentColor: "#EF8819", displayOrder: 4, iconName: "seguro", targetSectionId: "sec_seguros", buttonAction: "sec_seguros", imageUrl: "assets/seguro.png", isVisible: true, isDraft: false },
+      { id: "home_remesas", sectionId: "sec_home", title: "Remesas", subtitle: "Recibe tu dinero", description: "Recibe tu dinero", shortDescription: "Recibe tu dinero", accentColor: "#634794", displayOrder: 5, iconName: "remesa", targetSectionId: "sec_remesas", buttonAction: "sec_remesas", imageUrl: "assets/remesa.png", isVisible: true, isDraft: false },
+      { id: "home_beneficios", sectionId: "sec_home", title: "Tus 6 Beneficios", subtitle: "Hospitalización, seguro de ahorrantes y beneficio de oro", description: "Hospitalización, seguro de ahorrantes y beneficio de oro", shortDescription: "Hospitalización, seguro de ahorrantes y beneficio de oro", accentColor: "#EF8819", displayOrder: 6, iconName: "beneficios", targetSectionId: "sec_beneficios", buttonAction: "sec_beneficios", imageUrl: "assets/beneficios.png", isVisible: true, isDraft: false },
+      { id: "home_agencias", sectionId: "sec_home", title: "Agencias & PBX", subtitle: "Nuestras ubicaciones", description: "25 agencias en Sololá, Quiché, Totonicapán y Suchitepéquez", shortDescription: "Nuestras ubicaciones", accentColor: "#173789", displayOrder: 7, iconName: "ubicacion", targetSectionId: "sec_agencias", buttonAction: "sec_agencias", imageUrl: "assets/ubicacion.png", isVisible: true, isDraft: false },
+      { id: "home_servicios", sectionId: "sec_home", title: "Servicios Digitales", subtitle: "Banca en línea", description: "MICOOPE en Línea, App Móvil y Notificaciones SMS", shortDescription: "Banca en línea", accentColor: "#59B8A4", displayOrder: 8, iconName: "servicios_digitales", targetSectionId: "sec_servicios", buttonAction: "sec_servicios", imageUrl: "assets/servicios_digitales.png", isVisible: true, isDraft: false },
+      { id: "home_noticias", sectionId: "sec_home", title: "Noticias & Novedades", subtitle: "Actualidad COLUA", description: "Comunicados oficiales, jornadas ecológicas y convocatorias", shortDescription: "Actualidad COLUA", accentColor: "#E42A67", displayOrder: 9, iconName: "noticias_colua", targetSectionId: "sec_noticias", buttonAction: "sec_noticias", imageUrl: "assets/noticias.png", isVisible: true, isDraft: false },
+      { id: "home_sostenibilidad", sectionId: "sec_home", title: "Sostenibilidad Cooperativa", subtitle: "Cursos y centros de innovación", description: "Becas educativas, talleres productivos y centros de innovación", shortDescription: "Cursos y centros de innovación", accentColor: "#59B8A4", displayOrder: 10, iconName: "sostenibilidad_cooperativa", targetSectionId: "sec_sostenibilidad", buttonAction: "sec_sostenibilidad", imageUrl: "assets/sostenibilidad_cooperativa.png", isVisible: true, isDraft: false },
+      { id: "home_nosotros", sectionId: "sec_home", title: "Nosotros", subtitle: "Valores cooperativos, historia y propósito", description: "Valores cooperativos, historia y propósito", shortDescription: "Valores cooperativos, historia y propósito", accentColor: "#173789", displayOrder: 11, iconName: "public_service", targetSectionId: "sec_nosotros", buttonAction: "sec_nosotros", imageUrl: "assets/distintivo_colua.png", isVisible: true, isDraft: false },
+      { id: "home_banner_pbx", sectionId: "sec_home", title: "Banner: PBX Central", subtitle: "PBX: (502) 7795-7795", description: "Lunes a viernes de 8:00 a 17:00 | Sábados de 8:00 a 12:00 hrs.", shortDescription: "Atención telefónica institucional", buttonText: "PBX: (502) 7795-7795", buttonAction: "tel:77957795", accentColor: "#2563eb", displayOrder: 12, iconName: "telefono", targetSectionId: "tel:77957795", imageUrl: "assets/pbx.png", isVisible: true, isDraft: false },
+      { id: "home_banner_digital", sectionId: "sec_home", title: "Banner: MICOOPE en Línea", subtitle: "Canal Digital Seguro", description: "Ingresar a MICOOPE en Línea", shortDescription: "Acceso web seguro", buttonText: "Ingresar a MICOOPE en Línea", buttonAction: "https://micoopeenlinea.com.gt", accentColor: "#0a1931", displayOrder: 13, iconName: "candado", targetSectionId: "https://micoopeenlinea.com.gt", imageUrl: "assets/micoope_enlinea.png", isVisible: true, isDraft: false },
+      { id: "home_simulador_card", sectionId: "sec_home", title: "Simulador Financiero en Vivo", subtitle: "Monto ilimitado (hasta 1M+), cuotas niveladas y tasas sincronizadas", description: "Herramienta de cálculo en tiempo real", shortDescription: "Herramienta de cálculo en tiempo real", accentColor: "#173789", displayOrder: 14, iconName: "calculadora", targetSectionId: "#simulador-financiero", imageUrl: "assets/distintivo_colua.png", isVisible: true, isDraft: false },
 
       // 2. AHORROS (Cabecera y 6 Productos)
       { id: "item_ahorro_header", sectionId: "sec_ahorros", title: "Cuentas de Ahorro COLUA", subtitle: "Construye un futuro financiero sólido con nuestras opciones de ahorro adaptadas a cada etapa de tu vida. Cero comisiones de manejo y total respaldo del sistema cooperativo MICOOPE.", description: "Cabecera institucional de ahorros", displayOrder: 0, isVisible: true, isDraft: false },
@@ -407,7 +633,113 @@ class ColuaRepository {
       { id: "item_nos_gal_gobernanza", sectionId: "sec_nosotros", title: "Participación Democrática y Solidez del Sistema MICOOPE", subtitle: "GOBERNANZA COOPERATIVA", description: "Asambleas representativas y administración transparente.", imageUrl: "assets/noticia_asamblea_general.jpg", displayOrder: 10, isVisible: true, isDraft: false },
       { id: "item_nos_banner_contacto", sectionId: "sec_nosotros", title: "¿Necesitas ayuda adicional o deseas afiliarte?", subtitle: "ATENCIÓN AL ASOCIADO Y PÚBLICO", description: "Comunícate a nuestro PBX central o visítanos en cualquiera de nuestras 18 agencias departamentales para abrir tu cuenta de aportaciones y disfrutar de los beneficios cooperativos.", buttonText: "PBX: 7795-7795", buttonAction: "tel:77957795", displayOrder: 11, isVisible: true, isDraft: false },
 
-      // 10. NOTICIAS Y COMUNICADOS
+      // 10. BOLSA DE EMPLEO / PLAZAS VACANTES COLUA
+      {
+        id: "item_vacante_coordinador",
+        sectionId: "sec_empleo",
+        type: "job_vacancy",
+        title: "COORDINADOR DE COMPENSACIÓN FIJA Y VARIABLE",
+        subtitle: "Administración, San Juan Argueta.",
+        description: "Buscamos profesional para coordinar y supervisar los esquemas de compensación fija y variable de la cooperativa.",
+        imageUrl: "assets/plaza_coordinador_compensacion.jpg",
+        requirements: [
+          "Cierre de pensum en Contaduría Pública y Auditoría, Administración de Empresas o carrera afín.",
+          "Experiencia mínima de 2 años en puestos similares.",
+          "Disponibilidad de horario."
+        ],
+        skillsList: [
+          "Administración de procesos de planilla.",
+          "Conocimientos en legislación laboral, ISR e información financiera.",
+          "Gestión y control de presupuestos de salarios y beneficios.",
+          "Elaboración y análisis de informes e indicadores de compensación.",
+          "Resolución de problemas y toma de decisiones.",
+          "Adaptabilidad y habilidades de gestión de personal."
+        ],
+        benefitItems: [
+          "Salario competitivo.",
+          "Estabilidad laboral.",
+          "Prestaciones adicionales a la ley.",
+          "Seguro de vida y consultas médicas.",
+          "Oportunidad de desarrollo, capacitación y formación continua."
+        ],
+        leadEmail: "talentoh@coluarl.com.gt",
+        deadline: "17/09/2026",
+        buttonText: "Aplicar enviando CV",
+        buttonAction: "mailto:talentoh@coluarl.com.gt?subject=Postulaci%C3%B3n%3A%20Coordinador%20de%20Compensaci%C3%B3n",
+        displayOrder: 1,
+        isVisible: true,
+        isDraft: false
+      },
+      {
+        id: "item_vacante_cajero",
+        sectionId: "sec_empleo",
+        type: "job_vacancy",
+        title: "RECEPTOR PAGADOR / CAJERO GENERAL",
+        subtitle: "Agencia Sololá y Región Altiplano.",
+        description: "Buscamos personal con vocación de servicio para atención en ventanilla, recepción y desembolso de fondos, pagos de servicios y depósitos.",
+        imageUrl: "assets/distintivo_colua.png",
+        requirements: [
+          "Título a nivel diversificado de Perito Contador o Bachiller en Ciencias y Letras.",
+          "Experiencia mínima de 1 año en manejo de caja y arqueos de efectivo.",
+          "Residir en Sololá o municipios aledaños.",
+          "Disponibilidad inmediata y vocación de servicio al asociado."
+        ],
+        skillsList: [
+          "Manejo ágil y seguro de efectivo y conteo de papel moneda.",
+          "Excelente servicio al cliente y comunicación asertiva.",
+          "Habilidad numérica y uso de sistemas informáticos.",
+          "Responsabilidad, honradez y discreción en custodia de valores."
+        ],
+        benefitItems: [
+          "Salario competitivo con prestaciones de ley y adicionales.",
+          "Seguro de vida y gastos médicos.",
+          "Ambiente laboral seguro y cooperativo.",
+          "Plan de carrera y desarrollo profesional en MICOOPE."
+        ],
+        leadEmail: "talentoh@coluarl.com.gt",
+        deadline: "30/10/2026",
+        buttonText: "Aplicar enviando CV",
+        buttonAction: "mailto:talentoh@coluarl.com.gt?subject=Postulaci%C3%B3n%3A%20Receptor%20Pagador%20Cajero",
+        displayOrder: 2,
+        isVisible: true,
+        isDraft: false
+      },
+      {
+        id: "item_vacante_asesor_credito",
+        sectionId: "sec_empleo",
+        type: "job_vacancy",
+        title: "ASESOR DE CRÉDITOS Y DESARROLLO COOPERATIVO",
+        subtitle: "Agencia Santa Cruz del Quiché y Chichicastenango.",
+        description: "Encargado de prospección, análisis socioeconómico y colocación de créditos productivos, de vivienda y consumo, así como fidelización de asociados.",
+        imageUrl: "assets/distintivo_colua.png",
+        requirements: [
+          "Estudios universitarios en Administración, Agronomía, Trabajo Social o carrera afín.",
+          "Experiencia comprobable de 1 año en colocación de microcréditos o créditos de consumo.",
+          "Poseer motocicleta o vehículo propio con licencia de conducir vigente.",
+          "Habilidad de negociación y amplio conocimiento de la región."
+        ],
+        skillsList: [
+          "Análisis de capacidad de pago y solvencia financiera de microempresarios.",
+          "Gestión comercial y facilidad de palabra en trabajo de campo.",
+          "Manejo de relaciones interpersonales y servicio personalizado.",
+          "Trabajo enfocado en cumplimiento de metas institucionales."
+        ],
+        benefitItems: [
+          "Salario base más atractivo esquema de comisiones e incentivos por colocación.",
+          "Depreciación de vehículo y combustible.",
+          "Prestaciones de ley y beneficios cooperativos exclusivos.",
+          "Capacitación continua en evaluación crediticia y desarrollo humano."
+        ],
+        leadEmail: "talentoh@coluarl.com.gt",
+        deadline: "15/11/2026",
+        buttonText: "Aplicar enviando CV",
+        buttonAction: "mailto:talentoh@coluarl.com.gt?subject=Postulaci%C3%B3n%3A%20Asesor%20de%20Cr%C3%A9ditos",
+        displayOrder: 3,
+        isVisible: true,
+        isDraft: false
+      },
+
+      // 11. NOTICIAS Y COMUNICADOS
       {
         id: "news_reforestacion_2026",
         sectionId: "sec_noticias",
@@ -542,7 +874,7 @@ class ColuaRepository {
         iconName: "distintivo_colua",
         accentColor: "#173789",
         targetCardId: "home_asociate",
-        buttonText: "Enviar Solicitud de Afiliación",
+        buttonText: "Enviar Solicitud",
         requirements: [
           "DPI vigente original o copia legible (o Certificado de Nacimiento para menores de edad)",
           "Recibo de luz, agua o teléfono reciente (comprobante de dirección)",
@@ -553,7 +885,8 @@ class ColuaRepository {
           { id: "telefono", label: "Teléfono / WhatsApp", type: "tel", required: true, placeholder: "Ej: 5555-1234" },
           { id: "email", label: "Correo Electrónico", type: "email", required: true, placeholder: "Ej: juangomez@gmail.com" },
           { id: "dpi", label: "Número de DPI / CUI", type: "text", required: false, placeholder: "Ej: 1234 56789 0101" },
-          { id: "foto_dpi", label: "Foto de tu DPI (Ambos lados)", type: "file", required: false, placeholder: "Tomar o subir foto del DPI" },
+          { id: "foto_dpi_frente", label: "Foto de tu DPI - Frente (Anverso)", type: "file", required: false, placeholder: "Tomar o subir foto del frente del DPI" },
+          { id: "foto_dpi_reverso", label: "Foto de tu DPI - Atrás (Reverso)", type: "file", required: false, placeholder: "Tomar o subir foto del reverso del DPI" },
           { id: "foto_recibo_luz", label: "Foto de tu Recibo de Luz / Agua reciente", type: "file", required: false, placeholder: "Tomar o subir foto de recibo de servicios" },
           { id: "agencia", label: "Agencia de tu Preferencia", type: "select", required: true, options: ["Sololá Central", "Panajachel", "Santiago Atitlán", "San Lucas Tolimán", "Santa Cruz del Quiché", "Joyabaj", "Chichicastenango", "Totonicapán", "Mazatenango", "Otra / Coordinar por teléfono"] },
           { id: "metodo_pago", label: "Forma de pago de aportación inicial (Q100.00)", type: "select", required: true, options: ["Pago en Efectivo en Agencia", "Transferencia Bancaria", "Coordinar con Asesor al contactarme"] },
@@ -567,6 +900,64 @@ class ColuaRepository {
       }
     ];
 
+    const SAMPLE_DPI_FRENTE = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiB2aWV3Qm94PSIwIDAgNDAwIDI1MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJkcGlGcm9udEdyYWQiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZGJlYWZlIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYmZkYmZlIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyNTAiIHJ4PSIxNCIgZmlsbD0idXJsKCNkcGlGcm9udEdyYWQpIiBzdHJva2U9IiMyNTYzZWIiIHN0cm9rZS13aWR0aD0iMyIvPjxyZWN0IHg9IjE1IiB5PSIxNSIgd2lkdGg9IjM3MCIgaGVpZ2h0PSI0MiIgcng9IjYiIGZpbGw9IiMxNzM3ODkiLz48dGV4dCB4PSIyMDAiIHk9IjMzIiBmaWxsPSIjZmZmZmZmIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlJFUMOaQkxJQ0EgREUgR1VBVEVNQUxBPC90ZXh0Pjx0ZXh0IHg9IjIwMCIgeT0iNDciIGZpbGw9IiM5M2M1ZmQiIGZvbnQtc2l6ZT0iOC41IiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkRPQ1VNRU5UTyBQRVJTT05BTCBERSBJREVOVElGSUNBQ0nDk04gLSBDVUk8L3RleHQ+PHJlY3QgeD0iMjUiIHk9IjcwIiB3aWR0aD0iODUiIGhlaWdodD0iMTEwIiByeD0iOCIgZmlsbD0iIzk0YTMiIHN0cm9rZT0iIzQ3NTU2OSIgc3Ryb2tlLXdpZHRoPSIyIi8+PGNpcmNsZSBjeD0iNjciIGN5PSIxMDUiIHI9IjIyIiBmaWxsPSIjY2JkNWUxIi8+PHBhdGggZD0iTTQyIDE2NSBDNDIgMTM1IDkyIDEzNSA5MiAxNjUgWiIgZmlsbD0iI2NiZDVlMSIvPjxyZWN0IHg9IjEyNSIgeT0iNzUiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyOCIgcng9IjQiIGZpbGw9IiNmNTllMGIiIHN0cm9rZT0iI2I0NTMwOSIvPjx0ZXh0IHg9IjEyNSIgeT0iMTI1IiBmaWxsPSIjMTczNzg5IiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkNVSSAvIERQSTo8L3RleHQ+PHRleHQgeD0iMTI1IiB5PSIxNDIiIGZpbGw9IiMwZjE3MmEiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiPjI0ODkgNTEyMzQgMDcwMTwvdGV4dD48dGV4dCB4PSIxMjUiIHk9IjE2MyIgZmlsbD0iIzE3Mzc4OSIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPk5PTUJSRSBERUwgQVNPQ0lBRE86PC90ZXh0Pjx0ZXh0IHg9IjEyNSIgeT0iMTc4IiBmaWxsPSIjMGYxNzJhIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPk1BUsONYUxVSVNBIEdPTUVaIFFVSUNIw4k8L3RleHQ+PHJlY3QgeD0iMjAiIHk9IjE5NSIgd2lkdGg9IjM2MCIgaGVpZ2h0PSI0MCIgcng9IjYiIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC45IiBzdHJva2U9IiM5M2M1ZmQiLz48dGV4dCB4PSIzNSIgeT0iMjE4IiBmaWxsPSIjMTU4MDNkIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPuKckyBBTlZFUlNPIChGUkVOVEUpIOKAoiBWRVJJRklDQURPIFJFTkFQPC90ZXh0Pjwvc3ZnPg==';
+    const SAMPLE_DPI_REVERSO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiB2aWV3Qm94PSIwIDAgNDAwIDI1MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJkcGlCYWNrR3JhZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmOGZhZmMiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNlMmU4ZjAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgcng9IjE0IiBmaWxsPSJ1cmwoI2RwaUJhY2tHcmFkKSIgc3Ryb2tlPSIjNjQ3NDhiIiBzdHJva2Utd2lkdGg9IjMiLz48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIzNjAiIGhlaWdodD0iMzIiIGZpbGw9IiMwZjE3MmEiIHJ4PSI0Ii8+PHRleHQgeD0iMzAiIHk9IjQxIiBmaWxsPSIjZmZmZmZmIiBmb250LXNpemU9IjEwIiBmb250LWZhbWlseT0ibW9ub3NwYWNlIj58fHx8fHx8fCB8fHwgfHx8fHx8fHx8fCB8fHx8fHx8fHx8IHx8fHx8fHx8fHx8fCB8fHx8fHx8fDwvdGV4dD48dGV4dCB4PSIzMCIgeT0iNzUiIGZpbGw9IiM0NzU1NjkiIGZvbnQtc2l6ZT0iOSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5WRUNJTkRBRCAvIE1VTklDSVBJTzo8L3RleHQ+PHRleHQgeD0iMzAiIHk9IjkwIiBmaWxsPSIjMGYxNzJhIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPlNPTE9Mw4EsIFNPTE9Mw4E8L3RleHQ+PHRleHQgeD0iMjEwIiB5PSI3NSIgZmlsbD0iIzQ3NTU2OSIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkVTVEFETyBDSVZJTDo8L3RleHQ+PHRleHQgeD0iMjEwIiB5PSI5MCIgZmlsbD0iIzBmMTcyYSIgZm9udC1zaXplPSIxMSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj5TT0xURVJBPC90ZXh0PjxyZWN0IHg9IjMwIiB5PSIxMTAiIHdpZHRoPSIxNjAiIGhlaWdodD0iNDIiIHJ4PSI0IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiM5NGEzYjgiIHN0cm9rZS1kYXNoYXJyYXk9IjMgMyIvPjx0ZXh0IHg9IjQwIiB5PSIxMzYiIGZpbGw9IiM2NDc0OGIiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtZmFtaWx5PSJjdXJzaXZlIiBmb250LXN0eWxlPSJpdGFsaWMiPk1hcsOtYSBMLiBHw7NtZXogUS48L3RleHQ+PHRleHQgeD0iMzAiIHk9IjE2NSIgZmlsbD0iIzQ3NTU2OSIgZm9udC1zaXplPSI4IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+RklSTUEgREVMIFRJVFVMQVI8L3RleHQ+PHJlY3QgeD0iMjEwIiB5PSIxMTAiIHdpZHRoPSIxNjAiIGhlaWdodD0iNDgiIHJ4PSI0IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNjYmQ1ZTEiLz48dGV4dCB4PSIyMjAiIHk9IjEzMCIgZmlsbD0iIzQ3NTU2OSIgZm9udC1zaXplPSI4LjUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+RkVDSEEgVkVOQ0lNSUVOVE86PC90ZXh0Pjx0ZXh0IHg9IjIyMCIgeT0iMTQ4IiBmaWxsPSIjYjkxYzFjIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPjE0IC8gT0NUID8gMjAzMjwvdGV4dD48cmVjdCB4PSIyMCIgeT0iMTc1IiB3aWR0aD0iMzYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmZmZmIiByeD0iNCIgc3Ryb2tlPSIjY2JkNWUxIi8+PHRleHQgeD0iMjUiIHk9IjE5NiIgZmlsbD0iIzBmMTcyYSIgZm9udC1zaXplPSI5LjUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiPklER1RNMjQ4OTUxMjM0MDw8PDw8PDw8PDw8PDw8PDw8L3RleHQ+PHRleHQgeD0iMjUiIHk9IjIxNCIgZmlsbD0iIzBmMTcyYSIgZm9udC1zaXplPSI5LjUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiPjg4MDQxNTJGMzIxMDE0NUdUTTw8PDw8PDw8PDw8PDw0PC90ZXh0Pjx0ZXh0IHg9IjI1IiB5PSIyMjciIGZpbGw9IiMxZDRlZDgiIGZvbnQtc2l6ZT0iOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj7inJMgUkVWRVJTTyAoQVRSw4FTKSDigKogWk9OQSBNUlogWSBIVUVMTEE8L3RleHQ+PC9zdmc+';
+
+    const defaultSubmissions = [
+      {
+        id: "lead_demo_01",
+        formId: "form_asociate",
+        formTitle: "¿Cómo Asociarte a COLUA MICOOPE?",
+        nombre: "María Luisa Gómez Quiché",
+        telefono: "5555-4321",
+        email: "marialuisa.gomez@gmail.com",
+        dpi: "2489 51234 0701",
+        fotoDpiFrente: SAMPLE_DPI_FRENTE,
+        fotoDpiReverso: SAMPLE_DPI_REVERSO,
+        agenciaPreferida: "Sololá Central",
+        metodoPago: "Efectivo en Agencia (Q100.00)",
+        estado: "Pendiente",
+        createdAt: Date.now() - 3600000 * 2,
+        fechaStr: new Date(Date.now() - 3600000 * 2).toLocaleString(),
+        respuestas: {
+          "Nombre y Apellido": "María Luisa Gómez Quiché",
+          "Teléfono / WhatsApp": "5555-4321",
+          "Correo Electrónico": "marialuisa.gomez@gmail.com",
+          "Número de DPI / CUI": "2489 51234 0701",
+          "Foto de tu DPI - Frente (Anverso)": SAMPLE_DPI_FRENTE,
+          "Foto de tu DPI - Atrás (Reverso)": SAMPLE_DPI_REVERSO,
+          "Agencia de tu Preferencia": "Sololá Central",
+          "Forma de pago de aportación inicial (Q100.00)": "Pago en Efectivo en Agencia"
+        }
+      },
+      {
+        id: "lead_demo_02",
+        formId: "form_asociate",
+        formTitle: "¿Cómo Asociarte a COLUA MICOOPE?",
+        nombre: "Carlos Humberto Pérez Morales",
+        telefono: "4444-9876",
+        email: "carlos.perez.m@outlook.com",
+        dpi: "1890 87654 0801",
+        fotoDpiFrente: SAMPLE_DPI_FRENTE,
+        fotoDpiReverso: SAMPLE_DPI_REVERSO,
+        agenciaPreferida: "Panajachel",
+        metodoPago: "Transferencia Bancaria",
+        estado: "Contactado",
+        createdAt: Date.now() - 3600000 * 18,
+        fechaStr: new Date(Date.now() - 3600000 * 18).toLocaleString(),
+        respuestas: {
+          "Nombre y Apellido": "Carlos Humberto Pérez Morales",
+          "Teléfono / WhatsApp": "4444-9876",
+          "Correo Electrónico": "carlos.perez.m@outlook.com",
+          "Número de DPI / CUI": "1890 87654 0801",
+          "Foto de tu DPI - Frente (Anverso)": SAMPLE_DPI_FRENTE,
+          "Foto de tu DPI - Atrás (Reverso)": SAMPLE_DPI_REVERSO,
+          "Agencia de tu Preferencia": "Panajachel",
+          "Forma de pago de aportación inicial (Q100.00)": "Transferencia Bancaria"
+        }
+      }
+    ];
+
     return {
       sections: defaultSections,
       navigation_items: defaultNavigation,
@@ -574,7 +965,7 @@ class ColuaRepository {
       content_items: defaultItems,
       content_blocks: defaultBlocks,
       forms: defaultForms,
-      form_submissions: [],
+      form_submissions: defaultSubmissions,
       global_config: defaultGlobalConfig,
       usuarios: []
     };
@@ -663,6 +1054,11 @@ class ColuaRepository {
     if (!section.id) section.id = 'sec_' + Math.random().toString(36).substring(2, 9);
     section.updatedAt = Date.now();
     section.lastModified = Date.now();
+    // Auto-publicación: siempre activo y publicado en línea
+    section.isDraft = false;
+    section.isPublished = true;
+    if (section.isEnabled === undefined) section.isEnabled = true;
+    if (section.isVisible === undefined) section.isVisible = true;
     
     // Guardar local
     const db = this.getLocalDb();
@@ -695,11 +1091,16 @@ class ColuaRepository {
     // Guardar en Firestore si hay conexión
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('sections').doc(section.id).set(section, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(section);
+        await this.fb.collection('sections').doc(section.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Sección auto-publicada en Firestore: ${section.id}`);
       } catch (e) {
         console.warn('Error syncing section to Firestore:', e);
       }
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_SECCION' : 'CREAR_SECCION', `Sección "${section.title}" guardada y publicada en vivo.`);
     return section;
   }
 
@@ -757,10 +1158,12 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('sections').doc(id).delete();
         await this.fb.collection('navigation_items').doc('nav_' + id).delete();
       } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_SECCION', `Sección "${id}" eliminada de la plataforma.`);
     return true;
   }
 
@@ -903,32 +1306,6 @@ class ColuaRepository {
     return this.getItemsBySection(sectionId, true);
   }
 
-  async toggleContentItemVisibility(id) {
-    const db = this.getLocalDb();
-    const item = (db.content_items || []).find(i => i.id === id);
-    if (!item) return { success: false, error: 'Elemento no encontrado' };
-
-    const newStatus = item.isEnabled === false || item.isVisible === false ? true : false;
-    item.isEnabled = newStatus;
-    item.isVisible = newStatus;
-    item.updatedAt = Date.now();
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('content_items').doc(id).set(item, { merge: true });
-      } catch (e) {}
-    }
-
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_ELEMENTO' : 'OCULTAR_ELEMENTO',
-      performedBy: 'Super Administrador',
-      details: `Tarjeta ${item.title} (${item.id}) ahora está ${newStatus ? 'Visible' : 'Oculta'}`
-    });
-
-    return { success: true, item, isEnabled: newStatus };
-  }
-
   // Helpers recursivos para decodificar documentos de la API REST de Firestore
   _parseFirestoreRestValue(valObj) {
     if (!valObj) return null;
@@ -981,6 +1358,21 @@ class ColuaRepository {
     return [];
   }
 
+  async fetchDocumentRest(collectionName, docId) {
+    try {
+      const projectId = (window.COLUA_CONFIG && window.COLUA_CONFIG.firebase && window.COLUA_CONFIG.firebase.projectId) || 'colua-info';
+      const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${docId}`;
+      const resp = await fetch(restUrl, { cache: 'no-cache' });
+      if (resp.ok) {
+        const json = await resp.json();
+        return this._parseFirestoreRestDoc(json);
+      }
+    } catch (e) {
+      console.warn(`[ColuaRepository] Error consultando REST para ${collectionName}/${docId}:`, e);
+    }
+    return null;
+  }
+
   // Alias y sincronizador robusto para componente de noticias
   async getNewsArticles() {
     let cloudArticles = [];
@@ -988,9 +1380,16 @@ class ColuaRepository {
     // 1. Intentar mediante el SDK de Firestore (timeout 3500ms)
     try {
       if (this.fb && this.fb.db) {
-        const snap = await this._withTimeout(this.fb.collection('content_items').where('sectionId', '==', 'sec_noticias').get(), 3500);
+        const snap = await this._withTimeout(this.fb.collection('content_items').get(), 3500);
         if (!snap.empty) {
-          cloudArticles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          cloudArticles = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(item => {
+              if (!item) return false;
+              const sec = (item.sectionId || '').toLowerCase();
+              const id = (item.id || '').toLowerCase();
+              return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
+            });
         }
       }
     } catch (e) {
@@ -1037,12 +1436,21 @@ class ColuaRepository {
         console.warn('No se pudo persistir artículos nube en localStorage:', saveErr);
       }
 
-      return this.sortNewsByDate(cloudArticles);
+      const db = this.getLocalDb();
+      const allNews = (db.content_items || []).filter(i => {
+        if (i.isDraft === true || i.isVisible === false || i.isEnabled === false) return false;
+        const sec = (i.sectionId || '').toLowerCase();
+        const id = (i.id || '').toLowerCase();
+        return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
+      });
+
+      return this.sortNewsByDate(allNews.length > 0 ? allNews : cloudArticles);
     }
 
     // 4. Fallback a base de datos local
     const db = this.getLocalDb();
     const list = (db.content_items || []).filter(i => {
+      if (i.isDraft === true || i.isVisible === false || i.isEnabled === false) return false;
       const sec = (i.sectionId || '').toLowerCase();
       const id = (i.id || '').toLowerCase();
       return sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
@@ -1090,6 +1498,13 @@ class ColuaRepository {
   async insertItem(item) {
     if (!item.id) item.id = 'item_' + Math.random().toString(36).substring(2, 9);
     item.updatedAt = Date.now();
+    item.lastModified = Date.now();
+    // Auto-publicación: siempre activo y publicado en vivo
+    item.isDraft = false;
+    item.isPublished = true;
+    if (item.isEnabled === undefined) item.isEnabled = true;
+    if (item.isVisible === undefined) item.isVisible = true;
+
     const sec = (item.sectionId || '').toLowerCase();
     const id = (item.id || '').toLowerCase();
     const isNews = sec === 'sec_noticias' || sec === 'noticias' || id.startsWith('news_');
@@ -1129,7 +1544,10 @@ class ColuaRepository {
       else db.agencias.push(agData);
 
       if (this.fb && this.fb.db) {
-        try { await this.fb.collection('agencias').doc(item.id).set(agData, { merge: true }); } catch (e) {}
+        try { 
+          await this.ensureFirebaseAuthAdmin();
+          await this.fb.collection('agencias').doc(item.id).set(this._cleanDoc(agData), { merge: true }); 
+        } catch (e) {}
       }
     }
 
@@ -1137,15 +1555,24 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_items').doc(item.id).set(item, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(item);
+        await this.fb.collection('content_items').doc(item.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Tarjeta sincronizada en Firestore: ${item.id}`);
+      } catch (e) {
+        console.warn(`[ColuaRepo] Advertencia sincronizando en Firestore (${item.id}):`, e.message || e);
+      }
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_CONTENIDO' : 'CREAR_CONTENIDO', `Elemento "${item.title || item.id}" guardado y publicado en vivo.`);
     return item;
   }
 
   async insertBlock(block) {
     if (!block.id) block.id = 'block_' + Math.random().toString(36).substring(2, 9);
     block.updatedAt = Date.now();
+    block.isDraft = false;
+    block.isPublished = true;
     const db = this.getLocalDb();
     const idx = db.content_blocks.findIndex(b => b.id === block.id);
     if (idx >= 0) db.content_blocks[idx] = block;
@@ -1154,9 +1581,13 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_blocks').doc(block.id).set(block, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(block);
+        await this.fb.collection('content_blocks').doc(block.id).set(clean, { merge: true });
       } catch (e) {}
     }
+
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_BLOQUE' : 'CREAR_BLOQUE', `Bloque "${block.id}" guardado y publicado en vivo.`);
     return block;
   }
 
@@ -1167,10 +1598,13 @@ class ColuaRepository {
     this.saveLocalDb(db);
     if (this.fb && this.fb.db) {
       try { 
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('content_items').doc(id).delete(); 
         await this.fb.collection('agencias').doc(id).delete();
       } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_CONTENIDO', `Elemento "${id}" eliminado.`);
+    return { success: true };
   }
 
   async deleteBlockById(id) {
@@ -1178,8 +1612,13 @@ class ColuaRepository {
     db.content_blocks = db.content_blocks.filter(b => b.id !== id);
     this.saveLocalDb(db);
     if (this.fb && this.fb.db) {
-      try { await this.fb.collection('content_blocks').doc(id).delete(); } catch (e) {}
+      try { 
+        await this.ensureFirebaseAuthAdmin();
+        await this.fb.collection('content_blocks').doc(id).delete(); 
+      } catch (e) {}
     }
+    await this._autoPublishChange('ELIMINAR_BLOQUE', `Bloque "${id}" eliminado.`);
+    return { success: true };
   }
 
   async duplicateContentItem(itemId) {
@@ -1295,7 +1734,7 @@ class ColuaRepository {
   async getVisibleNavigation(type) {
     const db = this.getLocalDb();
     return (db.navigation_items || [])
-      .filter(n => n.type === type && n.isVisible !== false)
+      .filter(n => n.type === type && n.isVisible !== false && n.targetSectionId !== 'admin' && n.id !== 'side_admin')
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }
 
@@ -1320,18 +1759,19 @@ class ColuaRepository {
   // --- GESTIÓN DEL MENÚ SUPERIOR DE NAVEGACIÓN (Desktop Navbar y Submenús) ---
   getDefaultTopNavItems() {
     return [
-      { id: "topnav_home", label: "Inicio", targetSectionId: "sec_home", displayOrder: 1, isVisible: true, subItems: [] },
-      { id: "topnav_ahorros", label: "Ahorros", targetSectionId: "sec_ahorros", displayOrder: 2, isVisible: true, subItems: [] },
-      { id: "topnav_creditos", label: "Créditos", targetSectionId: "sec_creditos", displayOrder: 3, isVisible: true, subItems: [] },
-      { id: "topnav_seguros", label: "Seguros", targetSectionId: "sec_seguros", displayOrder: 4, isVisible: true, subItems: [] },
-      { id: "topnav_remesas", label: "Remesas", targetSectionId: "sec_remesas", displayOrder: 5, isVisible: true, subItems: [] },
-      { id: "topnav_servicios", label: "Servicios", targetSectionId: "sec_servicios", displayOrder: 6, isVisible: true, subItems: [] },
-      { id: "topnav_beneficios", label: "Beneficios", targetSectionId: "sec_beneficios", displayOrder: 7, isVisible: true, subItems: [] },
-      { id: "topnav_sostenibilidad", label: "Sostenibilidad", targetSectionId: "sec_sostenibilidad", displayOrder: 8, isVisible: true, subItems: [] },
-      { id: "topnav_noticias", label: "Noticias", targetSectionId: "sec_noticias", displayOrder: 9, isVisible: true, subItems: [] },
-      { id: "topnav_agencias", label: "Agencias", targetSectionId: "sec_agencias", displayOrder: 10, isVisible: true, subItems: [] },
-      { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros", displayOrder: 11, isVisible: true, subItems: [] },
-      { id: "topnav_admin", label: "Portal Administrativo", targetSectionId: "admin", displayOrder: 12, isVisible: true, subItems: [] }
+      { id: "topnav_home", label: "Inicio", targetSectionId: "sec_home", displayOrder: 1, orderIndex: 1, isVisible: true, subItems: [] },
+      { id: "topnav_ahorros", label: "Ahorros", targetSectionId: "sec_ahorros", displayOrder: 2, orderIndex: 2, isVisible: true, subItems: [] },
+      { id: "topnav_creditos", label: "Créditos", targetSectionId: "sec_creditos", displayOrder: 3, orderIndex: 3, isVisible: true, subItems: [] },
+      { id: "topnav_seguros", label: "Seguros", targetSectionId: "sec_seguros", displayOrder: 4, orderIndex: 4, isVisible: true, subItems: [] },
+      { id: "topnav_remesas", label: "Remesas", targetSectionId: "sec_remesas", displayOrder: 5, orderIndex: 5, isVisible: true, subItems: [] },
+      { id: "topnav_servicios", label: "Servicios", targetSectionId: "sec_servicios", displayOrder: 6, orderIndex: 6, isVisible: true, subItems: [] },
+      { id: "topnav_beneficios", label: "Beneficios", targetSectionId: "sec_beneficios", displayOrder: 7, orderIndex: 7, isVisible: true, subItems: [] },
+      { id: "topnav_sostenibilidad", label: "Sostenibilidad", targetSectionId: "sec_sostenibilidad", displayOrder: 8, orderIndex: 8, isVisible: true, subItems: [] },
+      { id: "topnav_noticias", label: "Noticias", targetSectionId: "sec_noticias", displayOrder: 9, orderIndex: 9, isVisible: true, subItems: [] },
+      { id: "topnav_agencias", label: "Agencias", targetSectionId: "sec_agencias", displayOrder: 10, orderIndex: 10, isVisible: true, subItems: [] },
+      { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros", displayOrder: 11, orderIndex: 11, isVisible: true, subItems: [] },
+      { id: "topnav_gobierno", label: "Gobierno Cooperativo", targetSectionId: "sec_nosotros", displayOrder: 12, orderIndex: 12, isVisible: true, subItems: [] },
+      { id: "topnav_mi_empleo", label: "Mi empleo", targetSectionId: "sec_empleo", displayOrder: 13, orderIndex: 13, isVisible: true, subItems: [] }
     ];
   }
 
@@ -1341,9 +1781,44 @@ class ColuaRepository {
       db.top_nav_items = this.getDefaultTopNavItems();
       this.saveLocalDb(db);
     }
+    let modified = false;
+    if (db.top_nav_items) {
+      const hadExtra = db.top_nav_items.some(n => n.id === 'topnav_empleo');
+      if (hadExtra) {
+        db.top_nav_items = db.top_nav_items.filter(n => n.id !== 'topnav_empleo');
+        modified = true;
+      }
+    }
+    if (!db.top_nav_items.some(n => (n.label && n.label.toLowerCase().includes('gobierno')) || (n.id && n.id.includes('gobierno')))) {
+      db.top_nav_items.push({
+        id: "topnav_gobierno",
+        label: "Gobierno Cooperativo",
+        targetSectionId: "sec_nosotros",
+        displayOrder: 12,
+        orderIndex: 12,
+        isVisible: true,
+        subItems: []
+      });
+      modified = true;
+    }
+    if (!db.top_nav_items.some(n => (n.label && n.label.toLowerCase().includes('mi empleo')) || (n.id && n.id.includes('mi_empleo')))) {
+      db.top_nav_items.push({
+        id: "topnav_mi_empleo",
+        label: "Mi empleo",
+        targetSectionId: "sec_empleo",
+        displayOrder: 13,
+        orderIndex: 13,
+        isVisible: true,
+        subItems: []
+      });
+      modified = true;
+    }
+    if (modified) {
+      this.saveLocalDb(db);
+    }
     return (db.top_nav_items || [])
-      .filter(item => item.isVisible !== false)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      .filter(item => item.isVisible !== false && item.targetSectionId !== 'admin' && item.id !== 'topnav_admin')
+      .sort((a, b) => ((a.orderIndex || a.displayOrder || 0) - (b.orderIndex || b.displayOrder || 0)));
   }
 
   async getTopNavItems() {
@@ -1351,99 +1826,31 @@ class ColuaRepository {
   }
 
   async saveTopNavItem(item) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
-    if (!item.id) item.id = 'topnav_' + Math.random().toString(36).substring(2, 9);
-    if (!Array.isArray(item.subItems)) item.subItems = [];
-    if (typeof item.displayOrder !== 'number') item.displayOrder = db.top_nav_items.length + 1;
-
-    const idx = db.top_nav_items.findIndex(n => n.id === item.id);
-    if (idx >= 0) {
-      db.top_nav_items[idx] = { ...db.top_nav_items[idx], ...item };
-    } else {
-      db.top_nav_items.push(item);
-    }
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(item.id).set(item, { merge: true }); } catch (e) {}
-    }
-    return item;
+    return this._saveTopNavItemInternal(item);
   }
 
   async deleteTopNavItem(id) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    db.top_nav_items = db.top_nav_items.filter(n => n.id !== id);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(id).delete(); } catch (e) {}
-    }
+    return this._deleteTopNavItemInternal(id);
   }
 
   async addTopNavSubItem(parentId, subItem) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent) return null;
-    if (!Array.isArray(parent.subItems)) parent.subItems = [];
-    if (!subItem.id) subItem.id = 'sub_' + Math.random().toString(36).substring(2, 9);
-    parent.subItems.push(subItem);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-    }
-    return subItem;
+    return this._addTopNavSubItemInternal(parentId, subItem);
   }
 
-  async updateTopNavSubItem(parentId, subItemId, updatedFields) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return null;
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent || !Array.isArray(parent.subItems)) return null;
-    const sIdx = parent.subItems.findIndex(s => s.id === subItemId);
-    if (sIdx >= 0) {
-      parent.subItems[sIdx] = { ...parent.subItems[sIdx], ...updatedFields };
-      this.saveLocalDb(db);
-
-      if (this.fb && this.fb.db) {
-        try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-      }
-      return parent.subItems[sIdx];
-    }
-    return null;
+  async updateTopNavSubItem(parentId, subItem, fields) {
+    return this._updateTopNavSubItemInternal(parentId, subItem, fields);
   }
 
-  async deleteTopNavSubItem(parentId, subItemId) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    const parent = db.top_nav_items.find(n => n.id === parentId);
-    if (!parent || !Array.isArray(parent.subItems)) return;
-    parent.subItems = parent.subItems.filter(s => s.id !== subItemId);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try { await this.fb.collection('top_nav_items').doc(parentId).set(parent, { merge: true }); } catch (e) {}
-    }
+  async deleteTopNavSubItem(parentId, subId) {
+    return this._deleteTopNavSubItemInternal(parentId, subId);
   }
 
   async reorderTopNavItems(orderedIds) {
-    const db = this.getLocalDb();
-    if (!db.top_nav_items) return;
-    orderedIds.forEach((id, index) => {
-      const item = db.top_nav_items.find(n => n.id === id);
-      if (item) item.displayOrder = index + 1;
-    });
-    this.saveLocalDb(db);
+    return this._reorderTopNavItemsInternal(orderedIds);
   }
 
   async resetTopNavToDefaults() {
-    const db = this.getLocalDb();
-    db.top_nav_items = this.getDefaultTopNavItems();
-    this.saveLocalDb(db);
-    return db.top_nav_items;
+    return this._resetTopNavToDefaultsInternal();
   }
 
   // --- GESTIÓN DE USUARIOS Y PERFILES (Firestore) ---
@@ -2328,65 +2735,157 @@ class ColuaRepository {
     };
   }
 
+  async _commitBatchSafely(docsArray, collectionName) {
+    if (!this.fb || !this.fb.db || !docsArray || docsArray.length === 0) return;
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < docsArray.length; i += CHUNK_SIZE) {
+      const chunk = docsArray.slice(i, i + CHUNK_SIZE);
+      try {
+        const batch = this.fb.db.batch();
+        for (const item of chunk) {
+          if (!item || !item.id) continue;
+          const ref = this.fb.collection(collectionName).doc(String(item.id));
+          batch.set(ref, this._cleanDoc(item), { merge: true });
+        }
+        await batch.commit();
+      } catch (batchErr) {
+        console.warn(`[ColuaRepo] Batch falló para ${collectionName}, reintentando individualmente:`, batchErr);
+        for (const item of chunk) {
+          if (!item || !item.id) continue;
+          try {
+            await this.fb.collection(collectionName).doc(String(item.id)).set(this._cleanDoc(item), { merge: true });
+          } catch (itemErr) {
+            console.error(`[ColuaRepo] Error guardando ${collectionName}/${item.id}:`, itemErr);
+          }
+        }
+      }
+    }
+  }
+
   async publishCurrentConfiguration() {
+    // 1. Asegurar sesión administrativa en Firebase Auth y /usuarios/{uid} con rol ADMIN
+    let authOk = false;
+    try {
+      authOk = await this.ensureFirebaseAuthAdmin();
+    } catch (authErr) {
+      console.warn('[ColuaRepo] Error verificando autenticación admin:', authErr);
+    }
+
     const db = this.getLocalDb();
-    const currentVersion = (db.global_config.published_version || 1) + 1;
+    const currentVersion = ((db.global_config && db.global_config.published_version) || 1) + 1;
     const timestamp = Date.now();
 
-    // Guardar copia de respaldo previa para rollback
+    // 2. Guardar copia de respaldo previa para rollback
     try {
       localStorage.setItem('colua_db_backup_last', JSON.stringify({
-        version: db.global_config.published_version || 1,
-        timestamp: db.global_config.last_sync_timestamp || Date.now(),
+        version: (db.global_config && db.global_config.published_version) || 1,
+        timestamp: (db.global_config && db.global_config.last_sync_timestamp) || Date.now(),
         dbSnapshot: JSON.parse(JSON.stringify(db))
       }));
     } catch (e) {}
 
-    // Marcar todo como publicado localmente
-    db.sections.forEach(s => { s.isPublished = true; s.isDraft = false; s.version = currentVersion; s.updatedAt = timestamp; s.lastModified = timestamp; });
-    db.content_items.forEach(i => { i.isDraft = false; i.isPublished = true; i.updatedAt = timestamp; i.lastModified = timestamp; });
-    db.content_blocks.forEach(b => { b.isDraft = false; b.updatedAt = timestamp; });
+    // 3. Marcar todo como publicado localmente
+    (db.sections || []).forEach(s => {
+      s.isPublished = true;
+      s.isDraft = false;
+      s.version = currentVersion;
+      s.updatedAt = timestamp;
+      s.lastModified = timestamp;
+    });
 
+    (db.content_items || []).forEach(i => {
+      i.isDraft = false;
+      i.isPublished = true;
+      if (i.isEnabled === undefined) i.isEnabled = true;
+      if (i.isVisible === undefined) i.isVisible = true;
+      i.updatedAt = timestamp;
+      i.lastModified = timestamp;
+
+      // Asegurar metadatos completos para noticias
+      const sec = (i.sectionId || '').toLowerCase();
+      if (sec === 'sec_noticias' || sec === 'noticias' || (i.id || '').startsWith('news_')) {
+        if (!i.publicationDate && !i.date && !i.fecha) i.publicationDate = new Date().toISOString();
+        if (!i.issuerName) i.issuerName = 'Cooperativa COLUA R.L.';
+        if (!i.issuerRole) i.issuerRole = 'Comunicación Oficial';
+        if (!i.tags) i.tags = '#COLUA';
+      }
+    });
+
+    (db.content_blocks || []).forEach(b => {
+      b.isDraft = false;
+      b.isPublished = true;
+      b.updatedAt = timestamp;
+    });
+
+    if (!db.global_config) db.global_config = {};
     db.global_config.published_version = currentVersion;
     db.global_config.last_sync_timestamp = timestamp;
-
     this.saveLocalDb(db);
 
-    // Publicar a Firestore
+    // 4. Publicar a Firestore Cloud
+    let firestoreError = null;
     if (this.fb && this.fb.db) {
       try {
-        const payload = {
+        const configPayload = {
           version: currentVersion,
+          published_version: currentVersion,
           updatedAt: new Date(),
+          lastSyncTimestamp: timestamp,
           updatedBy: 'Web_PWA_Admin',
-          sectionsCount: db.sections.length,
-          itemsCount: db.content_items.length,
-          blocksCount: db.content_blocks.length,
+          sectionsCount: (db.sections || []).length,
+          itemsCount: (db.content_items || []).length,
+          blocksCount: (db.content_blocks || []).length,
           isPublished: true
         };
 
-        await this.fb.collection('config').doc('published_config').set(payload);
+        // Guardar documento config/published_config para alertar a todos los clientes en tiempo real
+        await this.fb.collection('config').doc('published_config').set(this._cleanDoc(configPayload), { merge: true });
 
-        for (const s of db.sections) await this.fb.collection('sections').doc(s.id).set(s);
-        for (const item of db.content_items) await this.fb.collection('content_items').doc(item.id).set(item);
-        for (const block of db.content_blocks) await this.fb.collection('content_blocks').doc(block.id).set(block);
+        try {
+          await this.fb.collection('global_config').doc('main').set(this._cleanDoc(configPayload), { merge: true });
+        } catch (e) {}
+
+        // Publicar todas las colecciones principales usando batch seguro y sanitización
+        await this._commitBatchSafely(db.sections || [], 'sections');
+        await this._commitBatchSafely(db.content_items || [], 'content_items');
+        await this._commitBatchSafely(db.content_blocks || [], 'content_blocks');
+        if (db.forms && db.forms.length > 0) {
+          await this._commitBatchSafely(db.forms, 'forms');
+        }
+        if (db.agencias && db.agencias.length > 0) {
+          await this._commitBatchSafely(db.agencias, 'agencias');
+        }
+
+        console.log(`[COLUA CMS] Publicación exitosa en Firestore Cloud: Versión v${currentVersion}`);
       } catch (e) {
-        console.error('Error publicando a Firestore:', e);
+        console.error('[COLUA CMS] Error publicando a Firestore Cloud:', e);
+        firestoreError = e.message || 'Error de conexión o permisos con Firestore';
       }
+    } else {
+      firestoreError = 'Firebase Firestore no está disponible en este momento';
     }
 
     await this.logAudit({
       action: 'PUBLICACION_MASIVA_PRODUCCION',
       performedBy: 'Super Administrador',
-      details: `Se publicó a producción la versión v${currentVersion} (${db.sections.length} pantallas, ${db.content_items.length} tarjetas).`
+      details: `Se publicó a producción la versión v${currentVersion} (${(db.sections || []).length} pantallas, ${(db.content_items || []).length} tarjetas).`
     });
+
+    if (firestoreError) {
+      return {
+        success: false,
+        error: `Cambios guardados localmente, pero falló la publicación en la nube: ${firestoreError}`,
+        version: `v${currentVersion}`,
+        timestamp
+      };
+    }
 
     return {
       success: true,
       version: `v${currentVersion}`,
       timestamp,
-      sectionsCount: db.sections.length,
-      itemsCount: db.content_items.length
+      sectionsCount: (db.sections || []).length,
+      itemsCount: (db.content_items || []).length
     };
   }
 
@@ -2464,92 +2963,6 @@ class ColuaRepository {
     return { success: true };
   }
 
-  // Escuchador en tiempo real de versiones publicadas para la app cliente
-  subscribeToPublishedConfig(onUpdated) {
-    if (this.fb && this.fb.db) {
-      try {
-        return this.fb.collection('config').doc('published_config').onSnapshot(async (snap) => {
-          if (snap.exists) {
-            const remoteVersion = snap.data().version || 1;
-            const currentLocal = this.getLocalDb().global_config?.published_version || 1;
-            if (remoteVersion > currentLocal) {
-              console.log(`Nueva versión remota detectada (v${remoteVersion}). Sincronizando datos...`);
-              await this.syncAllFromCloud();
-              if (onUpdated) onUpdated(remoteVersion);
-            }
-          }
-        });
-      } catch (e) {}
-    }
-  }
-
-  // Sincronización completa desde Firestore Cloud
-  async syncAllFromCloud() {
-    if (!this.fb || !this.fb.db) return false;
-    try {
-      const [secSnap, itemSnap] = await Promise.all([
-        this._withTimeout(this.fb.collection('sections').get(), 4000),
-        this._withTimeout(this.fb.collection('content_items').get(), 4000)
-      ]);
-
-      const db = this.getLocalDb();
-      let changed = false;
-
-      if (secSnap && !secSnap.empty) {
-        secSnap.docs.forEach(doc => {
-          const remoteSec = { id: doc.id, ...doc.data() };
-          if (remoteSec.id === 'sec_comunidad' || remoteSec.slug === 'comunidad') return;
-          const idx = db.sections.findIndex(s => s.id === remoteSec.id);
-          if (idx >= 0) {
-            db.sections[idx] = { ...db.sections[idx], ...remoteSec };
-          } else {
-            db.sections.push(remoteSec);
-          }
-          changed = true;
-        });
-      }
-
-      if (itemSnap && !itemSnap.empty) {
-        itemSnap.docs.forEach(doc => {
-          const remoteItem = { id: doc.id, ...doc.data() };
-          if (remoteItem.sectionId === 'sec_comunidad') return;
-          this._cleanItemIfInverted(remoteItem);
-          const idx = db.content_items.findIndex(i => i.id === remoteItem.id);
-          if (idx >= 0) {
-            db.content_items[idx] = { ...db.content_items[idx], ...remoteItem };
-          } else {
-            db.content_items.push(remoteItem);
-          }
-          changed = true;
-        });
-      }
-
-      // Sincronizar formularios
-      try {
-        const formSnap = await this._withTimeout(this.fb.collection('forms').get(), 3000);
-        if (formSnap && !formSnap.empty) {
-          if (!db.forms) db.forms = [];
-          formSnap.docs.forEach(doc => {
-            const remoteForm = { id: doc.id, ...doc.data() };
-            const idx = db.forms.findIndex(f => f.id === remoteForm.id);
-            if (idx >= 0) db.forms[idx] = { ...db.forms[idx], ...remoteForm };
-            else db.forms.push(remoteForm);
-            changed = true;
-          });
-        }
-      } catch (e) {}
-
-      if (changed) {
-        this.saveLocalDb(db);
-        console.log('[COLUA Sync] Datos de la nube sincronizados exitosamente.');
-      }
-      return true;
-    } catch (e) {
-      console.warn('[COLUA Sync] Modo local/offline activo o error de conexión:', e.message);
-      return false;
-    }
-  }
-
   // --- FORMULARIOS DINÁMICOS & CAPTACIÓN DE LEADS ---
   async getForms() {
     if (this.fb && this.fb.db) {
@@ -2598,16 +3011,16 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('forms').doc(formData.id).set(formData, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(formData);
+        await this.fb.collection('forms').doc(formData.id).set(clean, { merge: true });
+        console.log(`[ColuaRepo] Formulario auto-publicado en Firestore: ${formData.id}`);
+      } catch (e) {
+        console.warn('Error guardando formulario en Firestore:', e);
+      }
     }
 
-    await this.logAudit({
-      action: idx >= 0 ? 'EDITAR_FORMULARIO' : 'CREAR_FORMULARIO',
-      performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
-      details: `Se guardó el formulario "${formData.title}" (${formData.id}) con ${formData.requirements?.length || 0} requisitos.`
-    });
-
+    await this._autoPublishChange(idx >= 0 ? 'EDITAR_FORMULARIO' : 'CREAR_FORMULARIO', `Formulario "${formData.title}" (${formData.id}) guardado y publicado en vivo.`);
     return { success: true, form: formData };
   }
 
@@ -2619,50 +3032,72 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
+        await this.ensureFirebaseAuthAdmin();
         await this.fb.collection('forms').doc(formId).delete();
       } catch (e) {}
     }
 
-    await this.logAudit({
-      action: 'ELIMINAR_FORMULARIO',
-      performedBy: window.authService?.getCurrentUser()?.nombre || 'Super Administrador',
-      details: `Se eliminó el formulario ${formId}`
-    });
-
+    await this._autoPublishChange('ELIMINAR_FORMULARIO', `Formulario "${formId}" eliminado de la plataforma.`);
     return { success: true };
   }
 
   async submitFormLead(leadData) {
-    const leadId = 'lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const leadId = leadData.id || ('lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
     const fullLead = {
       id: leadId,
       ...leadData,
       estado: leadData.estado || 'Pendiente',
-      createdAt: Date.now(),
+      createdAt: leadData.createdAt || Date.now(),
       updatedAt: Date.now(),
-      fechaStr: new Date().toLocaleString()
+      fechaStr: leadData.fechaStr || new Date().toLocaleString()
     };
 
     const db = this.getLocalDb();
     if (!db.form_submissions) db.form_submissions = [];
-    db.form_submissions.unshift(fullLead);
+    const existIdx = db.form_submissions.findIndex(s => s.id === leadId);
+    if (existIdx >= 0) {
+      db.form_submissions[existIdx] = fullLead;
+    } else {
+      db.form_submissions.unshift(fullLead);
+    }
+    if (db.form_submissions.length > 50) {
+      db.form_submissions = db.form_submissions.slice(0, 50);
+    }
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
+    // Guardado en la nube (Firebase Firestore)
+    if (this.fb) {
       try {
-        await this.fb.collection('form_submissions').doc(leadId).set(fullLead);
+        const auth = this.fb.auth;
+        if (auth && !auth.currentUser && typeof auth.signInAnonymously === 'function') {
+          try {
+            await auth.signInAnonymously();
+            console.log('[ColuaRepo] Sesión Firebase anónima activa para guardado en nube');
+          } catch (authErr) {
+            console.warn('[ColuaRepo] signInAnonymously advertencia:', authErr.message || authErr);
+          }
+        }
+
+        const dbFs = this.fb.db;
+        if (dbFs) {
+          const cleanLead = this._cleanDoc(fullLead);
+          await this.fb.collection('form_submissions').doc(leadId).set(cleanLead, { merge: true });
+          console.log('[ColuaRepo] ✓ Solicitud guardada exitosamente en Firestore Cloud:', leadId);
+        }
       } catch (e) {
-        console.warn('Error guardando lead en Firestore:', e);
+        console.error('[ColuaRepo] Error guardando lead en Firestore:', e);
       }
     }
 
-    await this.logAudit({
-      action: 'NUEVA_SOLICITUD_LEAD',
-      performedBy: fullLead.nombre || 'Visitante Web',
-      details: `Nueva solicitud para "${fullLead.formTitle || 'Afiliación'}" recibida de ${fullLead.nombre} (${fullLead.telefono}).`
-    });
+    try {
+      await this.logAudit({
+        action: 'NUEVA_SOLICITUD_LEAD',
+        performedBy: fullLead.nombre || 'Visitante Web',
+        details: `Nueva solicitud para "${fullLead.formTitle || 'Afiliación'}" recibida de ${fullLead.nombre} (${fullLead.telefono || 'Sin teléfono'}). DPI: ${fullLead.dpi || 'N/A'}.`
+      });
+    } catch (e) {}
 
-    return { success: true, lead: fullLead };
+    return { success: true, lead: fullLead, ...fullLead };
   }
 
   async getFormSubmissions() {
@@ -2987,18 +3422,20 @@ class ColuaRepository {
   // --- GESTIÓN DE BOTONES DEL MENÚ SUPERIOR Y SUB-BOTONES (NAVBAR DESKTOP) ---
   getDefaultTopNavItems() {
     return [
-      { id: 'topnav_inicio', label: 'Inicio', targetSectionId: 'sec_home', orderIndex: 1, subItems: [] },
-      { id: 'topnav_ahorros', label: 'Ahorros', targetSectionId: 'sec_ahorros', orderIndex: 2, subItems: [] },
-      { id: 'topnav_creditos', label: 'Créditos', targetSectionId: 'sec_creditos', orderIndex: 3, subItems: [] },
-      { id: 'topnav_seguros', label: 'Seguros', targetSectionId: 'sec_seguros', orderIndex: 4, subItems: [] },
-      { id: 'topnav_remesas', label: 'Remesas', targetSectionId: 'sec_remesas', orderIndex: 5, subItems: [] },
-      { id: 'topnav_servicios', label: 'Servicios', targetSectionId: 'sec_servicios', orderIndex: 6, subItems: [] },
-      { id: 'topnav_beneficios', label: 'Beneficios', targetSectionId: 'sec_beneficios', orderIndex: 7, subItems: [] },
-      { id: 'topnav_sostenibilidad', label: 'Sostenibilidad', targetSectionId: 'sec_sostenibilidad', orderIndex: 8, subItems: [] },
-      { id: 'topnav_noticias', label: 'Noticias', targetSectionId: 'sec_noticias', orderIndex: 9, subItems: [] },
-      { id: 'topnav_agencias', label: 'Agencias', targetSectionId: 'sec_agencias', orderIndex: 10, subItems: [] },
-      { id: 'topnav_nosotros', label: 'Nosotros', targetSectionId: 'sec_nosotros', orderIndex: 11, subItems: [] },
-      { id: 'topnav_admin', label: 'Portal Administrativo', targetSectionId: 'admin', orderIndex: 12, subItems: [] }
+      { id: 'topnav_inicio', label: 'Inicio', targetSectionId: 'sec_home', displayOrder: 1, orderIndex: 1, isVisible: true, subItems: [] },
+      { id: 'topnav_ahorros', label: 'Ahorros', targetSectionId: 'sec_ahorros', displayOrder: 2, orderIndex: 2, isVisible: true, subItems: [] },
+      { id: 'topnav_creditos', label: 'Créditos', targetSectionId: 'sec_creditos', displayOrder: 3, orderIndex: 3, isVisible: true, subItems: [] },
+      { id: 'topnav_seguros', label: 'Seguros', targetSectionId: 'sec_seguros', displayOrder: 4, orderIndex: 4, isVisible: true, subItems: [] },
+      { id: 'topnav_remesas', label: 'Remesas', targetSectionId: 'sec_remesas', displayOrder: 5, orderIndex: 5, isVisible: true, subItems: [] },
+      { id: 'topnav_servicios', label: 'Servicios', targetSectionId: 'sec_servicios', displayOrder: 6, orderIndex: 6, isVisible: true, subItems: [] },
+      { id: 'topnav_beneficios', label: 'Beneficios', targetSectionId: 'sec_beneficios', displayOrder: 7, orderIndex: 7, isVisible: true, subItems: [] },
+      { id: 'topnav_sostenibilidad', label: 'Sostenibilidad', targetSectionId: 'sec_sostenibilidad', displayOrder: 8, orderIndex: 8, isVisible: true, subItems: [] },
+      { id: 'topnav_noticias', label: 'Noticias', targetSectionId: 'sec_noticias', displayOrder: 9, orderIndex: 9, isVisible: true, subItems: [] },
+      { id: 'topnav_empleo', label: 'Empleo', targetSectionId: 'sec_empleo', displayOrder: 10, orderIndex: 10, isVisible: true, subItems: [] },
+      { id: 'topnav_agencias', label: 'Agencias', targetSectionId: 'sec_agencias', displayOrder: 11, orderIndex: 11, isVisible: true, subItems: [] },
+      { id: 'topnav_nosotros', label: 'Nosotros', targetSectionId: 'sec_nosotros', displayOrder: 12, orderIndex: 12, isVisible: true, subItems: [] },
+      { id: 'topnav_gobierno', label: 'Gobierno Cooperativo', targetSectionId: 'sec_nosotros', displayOrder: 13, orderIndex: 13, isVisible: true, subItems: [] },
+      { id: 'topnav_mi_empleo', label: 'Mi empleo', targetSectionId: 'sec_empleo', displayOrder: 14, orderIndex: 14, isVisible: true, subItems: [] }
     ];
   }
 
@@ -3013,7 +3450,52 @@ class ColuaRepository {
         db.global_config.top_nav_items = items;
         this.saveLocalDb(db);
       }
-      return items.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+      let modified = false;
+      if (db.sections && db.sections.some(s => s.id === 'sec_empleo') && !items.some(n => n.targetSectionId === 'sec_empleo' || (n.label && n.label.toLowerCase() === 'empleo'))) {
+        items.push({
+          id: 'topnav_empleo',
+          label: 'Empleo',
+          targetSectionId: 'sec_empleo',
+          orderIndex: 10,
+          displayOrder: 10,
+          isVisible: true,
+          subItems: []
+        });
+        modified = true;
+      }
+      if (!items.some(n => (n.label && n.label.toLowerCase().includes('gobierno')) || (n.id && n.id.includes('gobierno')))) {
+        items.push({
+          id: 'topnav_gobierno',
+          label: 'Gobierno Cooperativo',
+          targetSectionId: 'sec_nosotros',
+          displayOrder: 13,
+          orderIndex: 13,
+          isVisible: true,
+          subItems: []
+        });
+        modified = true;
+      }
+      if (!items.some(n => (n.label && n.label.toLowerCase().includes('mi empleo')) || (n.id && n.id.includes('mi_empleo')))) {
+        items.push({
+          id: 'topnav_mi_empleo',
+          label: 'Mi empleo',
+          targetSectionId: 'sec_empleo',
+          displayOrder: 14,
+          orderIndex: 14,
+          isVisible: true,
+          subItems: []
+        });
+        modified = true;
+      }
+      if (modified) {
+        db.top_nav_items = items;
+        if (!db.global_config) db.global_config = {};
+        db.global_config.top_nav_items = items;
+        this.saveLocalDb(db);
+      }
+      return (items || [])
+        .filter(item => item.isVisible !== false && item.targetSectionId !== 'admin' && item.id !== 'topnav_admin')
+        .sort((a, b) => ((a.orderIndex || a.displayOrder || 0) - (b.orderIndex || b.displayOrder || 0)));
     } catch (e) {
       return this.getDefaultTopNavItems();
     }
@@ -3038,6 +3520,10 @@ class ColuaRepository {
   }
 
   async saveTopNavItem(item) {
+    return this._saveTopNavItemInternal(item);
+  }
+
+  async _saveTopNavItemInternal(item) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
 
@@ -3060,17 +3546,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: idx >= 0 ? 'EDITAR_BOTON_NAVBAR' : 'CREAR_BOTON_NAVBAR',
@@ -3082,6 +3560,10 @@ class ColuaRepository {
   }
 
   async deleteTopNavItem(id) {
+    return this._deleteTopNavItemInternal(id);
+  }
+
+  async _deleteTopNavItemInternal(id) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
@@ -3093,17 +3575,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'ELIMINAR_BOTON_NAVBAR',
@@ -3115,6 +3589,10 @@ class ColuaRepository {
   }
 
   async addTopNavSubItem(parentId, subItem) {
+    return this._addTopNavSubItemInternal(parentId, subItem);
+  }
+
+  async _addTopNavSubItemInternal(parentId, subItem) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) db.top_nav_items = this.getDefaultTopNavItems();
 
@@ -3134,17 +3612,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'AGREGAR_SUBBOTON_NAVBAR',
@@ -3155,42 +3625,45 @@ class ColuaRepository {
     return { success: true, subItem: newSub };
   }
 
-  async updateTopNavSubItem(parentId, subItem) {
+  async updateTopNavSubItem(parentId, subItem, fields) {
+    return this._updateTopNavSubItemInternal(parentId, subItem, fields);
+  }
+
+  async _updateTopNavSubItemInternal(parentId, subItem, fields) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
     const parent = db.top_nav_items.find(i => i.id === parentId);
     if (!parent || !Array.isArray(parent.subItems)) return { success: false, error: 'Sub-botón no encontrado' };
 
-    const idx = parent.subItems.findIndex(s => s.id === subItem.id);
+    const targetSubId = typeof subItem === 'string' ? subItem : subItem.id;
+    const patchData = typeof subItem === 'string' ? fields : subItem;
+
+    const idx = parent.subItems.findIndex(s => s.id === targetSubId);
     if (idx < 0) return { success: false, error: 'Sub-botón no encontrado' };
 
-    parent.subItems[idx] = { ...parent.subItems[idx], ...subItem };
+    parent.subItems[idx] = { ...parent.subItems[idx], ...patchData };
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'EDITAR_SUBBOTON_NAVBAR',
       performedBy: 'Super Administrador',
-      details: `Se actualizó la sub-opción "${subItem.label}" del botón "${parent.label}".`
+      details: `Se actualizó la sub-opción "${parent.subItems[idx].label}" del botón "${parent.label}".`
     });
 
     return { success: true, subItem: parent.subItems[idx] };
   }
 
   async deleteTopNavSubItem(parentId, subId) {
+    return this._deleteTopNavSubItemInternal(parentId, subId);
+  }
+
+  async _deleteTopNavSubItemInternal(parentId, subId) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false, error: 'No hay botones configurados' };
 
@@ -3201,17 +3674,9 @@ class ColuaRepository {
 
     if (!db.global_config) db.global_config = {};
     db.global_config.top_nav_items = db.top_nav_items;
-    db.global_config.last_sync_timestamp = Date.now();
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'ELIMINAR_SUBBOTON_NAVBAR',
@@ -3223,6 +3688,10 @@ class ColuaRepository {
   }
 
   async reorderTopNavItems(orderedIds) {
+    return this._reorderTopNavItemsInternal(orderedIds);
+  }
+
+  async _reorderTopNavItemsInternal(orderedIds) {
     const db = this.getLocalDb();
     if (!db.top_nav_items) return { success: false };
 
@@ -3248,19 +3717,16 @@ class ColuaRepository {
     db.global_config.top_nav_items = db.top_nav_items;
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: db.top_nav_items,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     return { success: true, items: reordered };
   }
 
   async resetTopNavToDefaults() {
+    return this._resetTopNavToDefaultsInternal();
+  }
+
+  async _resetTopNavToDefaultsInternal() {
     const defaults = this.getDefaultTopNavItems();
     const db = this.getLocalDb();
     db.top_nav_items = defaults;
@@ -3268,14 +3734,7 @@ class ColuaRepository {
     db.global_config.top_nav_items = defaults;
     this.saveLocalDb(db);
 
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('config').doc('top_nav').set({
-          items: defaults,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (e) {}
-    }
+    await this._syncTopNavToCloud();
 
     await this.logAudit({
       action: 'RESTABLECER_NAVBAR_DEFAULT',
@@ -3291,25 +3750,26 @@ class ColuaRepository {
     const sec = db.sections.find(s => s.id === id);
     if (!sec) return { success: false, error: 'Sección no encontrada' };
 
-    const newStatus = sec.isEnabled === false ? true : false;
+    const newStatus = sec.isEnabled === false || sec.isVisible === false ? true : false;
     sec.isEnabled = newStatus;
     sec.isVisible = newStatus;
-    sec.isPublished = false; // queda en borrador para publicación
+    sec.isPublished = newStatus;
+    sec.isDraft = false;
     sec.updatedAt = Date.now();
 
     this.saveLocalDb(db);
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('sections').doc(id).set(sec, { merge: true });
-      } catch (e) {}
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(sec);
+        await this.fb.collection('sections').doc(id).set(clean, { merge: true });
+      } catch (e) {
+        console.warn('[ColuaRepo] Error actualizando sección en Firestore:', e);
+      }
     }
 
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_SECCION' : 'OCULTAR_SECCION',
-      performedBy: 'Super Administrador',
-      details: `Sección ${sec.title} (${sec.id}) ahora está ${newStatus ? 'Activa' : 'Oculta'}`
-    });
+    await this._autoPublishChange(newStatus ? 'ACTIVAR_SECCION' : 'OCULTAR_SECCION', `Sección ${sec.title} (${sec.id}) ahora está ${newStatus ? 'Activa' : 'Oculta'}`);
 
     return { success: true, section: sec, isEnabled: newStatus };
   }
@@ -3325,8 +3785,8 @@ class ColuaRepository {
     const newStatus = item.isEnabled === false || item.isVisible === false ? true : false;
     item.isEnabled = newStatus;
     item.isVisible = newStatus;
-    item.isDraft = true;
-    item.isPublished = false;
+    item.isDraft = false;
+    item.isPublished = newStatus;
     item.updatedAt = Date.now();
     item.lastModified = Date.now();
 
@@ -3334,15 +3794,16 @@ class ColuaRepository {
 
     if (this.fb && this.fb.db) {
       try {
-        await this.fb.collection('content_items').doc(id).set(item, { merge: true });
+        await this.ensureFirebaseAuthAdmin();
+        const clean = this._cleanDoc(item);
+        await this.fb.collection('content_items').doc(id).set(clean, { merge: true });
+        if (db.agencias && db.agencias.some(a => a.id === id)) {
+          await this.fb.collection('agencias').doc(id).set(clean, { merge: true });
+        }
       } catch (e) {}
     }
 
-    await this.logAudit({
-      action: newStatus ? 'ACTIVAR_ELEMENTO_CONTENIDO' : 'OCULTAR_ELEMENTO_CONTENIDO',
-      performedBy: 'Super Administrador',
-      details: `Elemento "${item.title || item.nombre || item.id}" (${item.id}) ahora está ${newStatus ? 'Activo / Visible' : 'Oculto'}`
-    });
+    await this._autoPublishChange(newStatus ? 'ACTIVAR_ELEMENTO_CONTENIDO' : 'OCULTAR_ELEMENTO_CONTENIDO', `Elemento "${item.title || item.nombre || item.id}" (${item.id}) ahora está ${newStatus ? 'Activo / Visible' : 'Oculto'}`);
 
     return { success: true, item, isEnabled: newStatus };
   }
@@ -3351,6 +3812,44 @@ class ColuaRepository {
   async syncAllFromCloud() {
     let hasChanges = false;
     const db = this.getLocalDb();
+
+    // 0. Sincronizar Versión Publicada y Configuración Global
+    if (this.fb && this.fb.db) {
+      try {
+        const configSnap = await this._withTimeout(this.fb.collection('config').doc('published_config').get(), 3000);
+        if (configSnap.exists) {
+          const rData = configSnap.data();
+          if (rData && rData.version) {
+            if (!db.global_config) db.global_config = {};
+            db.global_config.published_version = rData.version;
+            db.global_config.last_sync_timestamp = rData.lastSyncTimestamp || Date.now();
+            hasChanges = true;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 0.1 Sincronizar Botones y Sub-botones del Menú Superior (top_nav)
+    if (this.fb && this.fb.db) {
+      try {
+        const topNavSnap = await this._withTimeout(this.fb.collection('config').doc('top_nav').get(), 3000);
+        if (topNavSnap.exists && topNavSnap.data() && Array.isArray(topNavSnap.data().items) && topNavSnap.data().items.length > 0) {
+          db.top_nav_items = topNavSnap.data().items;
+          if (!db.global_config) db.global_config = {};
+          db.global_config.top_nav_items = topNavSnap.data().items;
+          hasChanges = true;
+        }
+      } catch (e) {}
+    }
+    if (!db.top_nav_items || db.top_nav_items.length === 0) {
+      const restTopNav = await this.fetchDocumentRest('config', 'top_nav');
+      if (restTopNav && Array.isArray(restTopNav.items) && restTopNav.items.length > 0) {
+        db.top_nav_items = restTopNav.items;
+        if (!db.global_config) db.global_config = {};
+        db.global_config.top_nav_items = restTopNav.items;
+        hasChanges = true;
+      }
+    }
 
     // 1. Sincronizar Content Items (Tarjetas, Formularios, Banners, Noticias)
     let remoteItems = [];
@@ -3463,9 +3962,38 @@ class ColuaRepository {
       });
     }
 
+    // 5. Sincronizar Content Blocks
+    let remoteBlocks = [];
+    if (this.fb && this.fb.db) {
+      try {
+        const snap = await this._withTimeout(this.fb.collection('content_blocks').get(), 3000);
+        if (!snap.empty) {
+          remoteBlocks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+      } catch (e) {}
+    }
+
+    if (!remoteBlocks || remoteBlocks.length === 0) {
+      remoteBlocks = await this.fetchCollectionRest('content_blocks');
+    }
+
+    if (remoteBlocks && remoteBlocks.length > 0) {
+      if (!db.content_blocks) db.content_blocks = [];
+      remoteBlocks.forEach(rb => {
+        if (!rb || !rb.id) return;
+        const idx = db.content_blocks.findIndex(b => b.id === rb.id);
+        if (idx >= 0) db.content_blocks[idx] = { ...db.content_blocks[idx], ...rb };
+        else db.content_blocks.push(rb);
+        hasChanges = true;
+      });
+    }
+
     if (hasChanges) {
       this.saveLocalDb(db);
       try {
+        if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+          window.navbarComponent.refresh();
+        }
         window.dispatchEvent(new CustomEvent('colua-data-synced', { detail: { timestamp: Date.now() } }));
       } catch (e) {}
     }
@@ -3477,6 +4005,20 @@ class ColuaRepository {
   subscribeToPublishedConfig(callback) {
     if (!this.fb || !this.fb.db) return;
     try {
+      // 1. Escuchar la versión publicada en config/published_config
+      this.fb.collection('config').doc('published_config').onSnapshot(async (snap) => {
+        if (snap.exists) {
+          const remoteVersion = snap.data().version || snap.data().published_version || 1;
+          const currentLocal = this.getLocalDb().global_config?.published_version || 1;
+          if (remoteVersion > currentLocal) {
+            console.log(`[COLUA Sync] Nueva versión remota detectada (v${remoteVersion}). Sincronizando datos...`);
+            await this.syncAllFromCloud();
+            if (typeof callback === 'function') callback(remoteVersion);
+          }
+        }
+      }, (err) => console.warn('[ColuaRepo] Realtime config/published_config warning:', err));
+
+      // 2. Escuchar cambios directos en content_items
       this.fb.collection('content_items').onSnapshot((snap) => {
         const db = this.getLocalDb();
         let changed = false;
@@ -3498,6 +4040,7 @@ class ColuaRepository {
         }
       }, (err) => console.warn('[ColuaRepo] Realtime content_items listener warning:', err));
 
+      // 3. Escuchar cambios directos en sections
       this.fb.collection('sections').onSnapshot((snap) => {
         const db = this.getLocalDb();
         let changed = false;
@@ -3518,6 +4061,21 @@ class ColuaRepository {
           if (typeof callback === 'function') callback();
         }
       }, (err) => console.warn('[ColuaRepo] Realtime sections listener warning:', err));
+
+      // 4. Escuchar cambios directos en botones del menú superior (config/top_nav)
+      this.fb.collection('config').doc('top_nav').onSnapshot((snap) => {
+        if (snap.exists && snap.data() && Array.isArray(snap.data().items)) {
+          const db = this.getLocalDb();
+          db.top_nav_items = snap.data().items;
+          if (!db.global_config) db.global_config = {};
+          db.global_config.top_nav_items = snap.data().items;
+          this.saveLocalDb(db);
+          if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+            window.navbarComponent.refresh();
+          }
+          if (typeof callback === 'function') callback();
+        }
+      }, (err) => console.warn('[ColuaRepo] Realtime config/top_nav listener warning:', err));
     } catch (e) {
       console.warn('[ColuaRepo] Error configurando suscripción en tiempo real:', e);
     }
@@ -3535,117 +4093,9 @@ class ColuaRepository {
     return (db.forms || []).find(f => f.id === id || f.targetCardId === id);
   }
 
-  async saveForm(form) {
-    if (!form.id) form.id = 'form_' + Math.random().toString(36).substring(2, 9);
-    form.updatedAt = Date.now();
-    const db = this.getLocalDb();
-    if (!db.forms) db.forms = [];
-    const idx = db.forms.findIndex(f => f.id === form.id);
-    if (idx >= 0) db.forms[idx] = form;
-    else db.forms.push(form);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('forms').doc(form.id).set(form, { merge: true });
-      } catch (e) {
-        console.warn('Error guardando formulario en Firestore:', e);
-      }
-    }
-    return form;
-  }
-
-  async submitFormLead(lead) {
-    if (!lead.id) lead.id = 'lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-    lead.createdAt = Date.now();
-    lead.fechaStr = new Date().toLocaleString();
-    lead.estado = lead.estado || 'Pendiente';
-
-    const db = this.getLocalDb();
-    if (!db.form_submissions) db.form_submissions = [];
-    db.form_submissions.unshift(lead);
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        await this.fb.collection('form_submissions').doc(lead.id).set(lead, { merge: true });
-      } catch (e) {
-        console.warn('Error guardando lead en Firestore:', e);
-      }
-    }
-    return lead;
-  }
-
   async getFormLeads() {
-    let remoteLeads = [];
-    if (this.fb && this.fb.db) {
-      try {
-        const snap = await this._withTimeout(this.fb.collection('form_submissions').get(), 3000);
-        if (!snap.empty) {
-          remoteLeads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const db = this.getLocalDb();
-          db.form_submissions = remoteLeads;
-          this.saveLocalDb(db);
-          return remoteLeads;
-        }
-      } catch (e) {}
-    }
-    const db = this.getLocalDb();
-    return db.form_submissions || [];
+    return await this.getFormSubmissions();
   }
-
-  async publishCurrentConfiguration() {
-    const db = this.getLocalDb();
-    if (db.content_items) {
-      db.content_items.forEach(i => {
-        if (i.isDraft) {
-          i.isDraft = false;
-          i.isPublished = true;
-          i.updatedAt = Date.now();
-        }
-      });
-    }
-    if (db.sections) {
-      db.sections.forEach(s => {
-        if (s.isDraft) {
-          s.isDraft = false;
-          s.isPublished = true;
-          s.updatedAt = Date.now();
-        }
-      });
-    }
-    this.saveLocalDb(db);
-
-    if (this.fb && this.fb.db) {
-      try {
-        const batch = this.fb.db.batch();
-        (db.content_items || []).forEach(item => {
-          const ref = this.fb.collection('content_items').doc(item.id);
-          batch.set(ref, item, { merge: true });
-        });
-        (db.sections || []).forEach(sec => {
-          const ref = this.fb.collection('sections').doc(sec.id);
-          batch.set(ref, sec, { merge: true });
-        });
-        await batch.commit();
-      } catch (e) {
-        console.warn('Error publicando lote a Firestore:', e);
-      }
-    }
-    return { success: true, timestamp: Date.now() };
-  }
-
-  getSyncStatusInfo() {
-    const db = this.getLocalDb();
-    const isOnline = navigator.onLine;
-    const isFirebaseConnected = !!(this.fb && this.fb.db);
-    return {
-      isOnline,
-      isFirebaseConnected,
-      totalItems: (db.content_items || []).length,
-      totalSections: (db.sections || []).length,
-      lastSync: db.global_config?.last_sync_timestamp || Date.now()
-    };
   }
 
   // Aliases para compatibilidad con admin.js y otros componentes

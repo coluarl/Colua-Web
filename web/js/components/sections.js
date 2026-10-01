@@ -13,6 +13,7 @@ class SectionsComponent {
     if (cleanId === 'sec_beneficios' || cleanId === 'beneficios') return this.renderBeneficios();
     if (cleanId === 'sec_sostenibilidad' || cleanId === 'sostenibilidad') return this.renderSostenibilidad();
     if (cleanId === 'sec_nosotros' || cleanId === 'nosotros') return this.renderNosotros();
+    if (cleanId === 'sec_empleo' || cleanId === 'empleo' || cleanId === 'mi_empleo' || cleanId === 'mi-empleo') return this.renderEmpleo();
 
     // Renderizador de Secciones Genéricas / Creadas dinámicamente en el CMS
     return this.renderDynamicGeneric(cleanId);
@@ -28,7 +29,7 @@ class SectionsComponent {
       const pdfTarget = action.replace(/^pdf:/, '').trim();
       const escapedTitle = (text || 'Documento Oficial').replace(/'/g, "\\'");
       return `
-        <button type="button" onclick="event.stopPropagation(); if(window.openPdfDocument){ window.openPdfDocument('${pdfTarget}', '${escapedTitle}', '${itemId || ''}'); } else if(window.app && window.app.openItemPdf){ window.app.openItemPdf('${itemId || ''}', '${pdfTarget}'); } else { window.open('${pdfTarget}', '_blank'); }" class="clean-btn-card-action" style="cursor: pointer; border: none; width: 100%; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #dc2626; color: #ffffff; font-weight: 700; border-radius: 8px; padding: 11px 16px; box-shadow: 0 2px 6px rgba(220,38,38,0.25); transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); if(window.openPdfDocument){ window.openPdfDocument('${pdfTarget}', '${escapedTitle}', '${itemId || ''}'); } else if(window.app && window.app.openItemPdf){ window.app.openItemPdf('${itemId || ''}', '${pdfTarget}'); } else { window.open('${pdfTarget}', '_blank'); }" class="clean-btn-card-action" style="cursor: pointer; border: none; width: 100%; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #dc2626; color: #ffffff; font-weight: 700; border-radius: 8px; padding: 11px 16px; box-shadow: 0 2px 6px rgba(220,38,38,0.25); transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>${text || 'Ver Documento PDF'} ↗</span>
         </button>
@@ -806,7 +807,7 @@ class SectionsComponent {
           ${beneficios.map(b => {
             const rawPdf = b.pdfUrl || (b.buttonAction && b.buttonAction.startsWith('pdf:') ? b.buttonAction.replace('pdf:', '') : '');
             return `
-              <div class="clean-product-card" ${b.isPdf ? `onclick="window.openPdfDocument('${rawPdf}', '${(b.titulo || 'Documento').replace(/'/g, "\\'")}', '${b.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
+              <div class="clean-product-card" ${b.isPdf ? `onclick="if(event.target.closest('button')) return; window.openPdfDocument('${rawPdf}', '${(b.titulo || 'Documento').replace(/'/g, "\\'")}', '${b.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
                 <div>
                   <div class="clean-product-icon-wrap" ${b.isPdf ? 'style="background: #fef2f2; border: 1.5px solid #fecaca; height: 68px; display: flex; align-items: center; justify-content: center;"' : ''}>
                     ${b.isPdf ? `
@@ -1260,8 +1261,9 @@ class SectionsComponent {
               const isPdf = i.type === 'pdf_document' || (i.buttonAction && i.buttonAction.startsWith('pdf:')) || (i.pdfUrl && i.pdfUrl.length > 0);
               const rawPdf = i.pdfUrl || (i.buttonAction && i.buttonAction.startsWith('pdf:') ? i.buttonAction.replace('pdf:', '') : '');
               const sizeFormatted = i.fileSize ? ` • ${(i.fileSize / (1024 * 1024)).toFixed(2)} MB` : '';
+              const hasCover = isPdf && !!(i.imageUrl && (i.imageUrl.startsWith('data:image') || i.imageUrl.startsWith('http') || i.imageUrl.startsWith('assets/')));
               return `
-                <div class="clean-product-card" ${isPdf ? `onclick="window.openPdfDocument('${rawPdf}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
+                <div class="clean-product-card" ${isPdf ? `onclick="if(event.target.closest('button')) return; window.openPdfDocument('${rawPdf}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}')" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;"` : 'style="display: flex; flex-direction: column; justify-content: space-between;"'}>
                   <div>
                     ${isPdf ? `
                       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
@@ -1271,9 +1273,19 @@ class SectionsComponent {
                         </span>
                         <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">PDF${sizeFormatted}</span>
                       </div>
-                      <div class="clean-product-icon-wrap" style="margin-bottom: 12px; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px; display: flex; align-items: center; justify-content: center;">
-                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                      </div>
+                      ${hasCover ? `
+                        <div class="pdf-cover-wrap" style="position: relative; margin-bottom: 14px; border-radius: 10px; overflow: hidden; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 190px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                          <img src="${i.imageUrl}" alt="${i.title}" style="width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;" onerror="this.parentElement.style.display='none'" />
+                          <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15, 23, 42, 0.85); color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 4px; backdrop-filter: blur(4px);">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <span>Página 1</span>
+                          </div>
+                        </div>
+                      ` : `
+                        <div class="clean-product-icon-wrap" style="margin-bottom: 12px; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px; display: flex; align-items: center; justify-content: center;">
+                          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        </div>
+                      `}
                     ` : ''}
                     <h3 class="clean-product-name">${i.title}</h3>
                     ${i.subtitle ? `<span style="font-size:0.8rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">${i.subtitle}</span>` : ''}
@@ -1347,14 +1359,114 @@ class SectionsComponent {
     const desc = sec ? sec.description : '';
 
     const items = await repo.getItemsBySection(sec ? sec.id : sectionId);
+    const visibleItems = (items || []).filter(i => i.isVisible !== false && i.isEnabled !== false);
 
-    const itemsHtml = items.map(i => {
+    // Separar elementos que requieren formato enriquecido
+    const strategicItems = [];
+    const jobVacancyItems = [];
+    const bannerItems = [];
+    const regularItems = [];
+
+    for (const i of visibleItems) {
+      if (i.type === 'strategic_axis') {
+        strategicItems.push(i);
+      } else if (i.type === 'job_vacancy') {
+        jobVacancyItems.push(i);
+      } else if (i.type === 'banner') {
+        bannerItems.push(i);
+      } else {
+        regularItems.push(i);
+      }
+    }
+
+    // Renderizado especializado de Ejes Estratégicos (Diseño institucional con sub-programas / checks)
+    const strategicHtml = (await Promise.all(strategicItems.map(async (i, idx) => {
+      let blocks = [];
+      try {
+        blocks = await repo.getBlocksByItemId(i.id);
+      } catch(e) {}
+
+      if ((!blocks || blocks.length === 0) && Array.isArray(i.benefitItems) && i.benefitItems.length > 0) {
+        blocks = i.benefitItems.map((b, bIdx) => ({ id: `b_${i.id}_${bIdx}`, content: b }));
+      }
+
+      const colors = [
+        { color: "#634794", bg: "#f5f3ff", border: "#ddd6fe" },
+        { color: "#0284C7", bg: "#f0f9ff", border: "#bae6fd" },
+        { color: "#E42A67", bg: "#fdf2f8", border: "#fbcfe8" },
+        { color: "#EF8819", bg: "#fff7ed", border: "#fed7aa" }
+      ];
+      const style = colors[idx % colors.length];
+
+      return `
+        <article class="sostenibilidad-eje-card" style="margin-bottom: 24px; --eje-color: ${style.color}; --eje-soft-bg: ${style.bg}; --eje-soft-border: ${style.border};">
+          <div class="sostenibilidad-eje-img-box">
+            <img src="${i.imageUrl || 'assets/noticia_taller_finanzas.jpg'}" alt="${i.title}" class="sostenibilidad-eje-img" onerror="this.src='assets/programa_wachalal.png'" />
+          </div>
+          <div class="sostenibilidad-eje-content">
+            <div class="sostenibilidad-eje-header">
+              <span class="sostenibilidad-eje-kicker">${i.subtitle || `Eje Estratégico 0${idx + 1}`}</span>
+              <h2 class="sostenibilidad-eje-title">${i.title}</h2>
+              <p class="sostenibilidad-eje-desc">${i.description || ''}</p>
+            </div>
+
+            ${blocks.length > 0 ? `
+              <div class="sostenibilidad-programas-grid">
+                ${blocks.map(b => {
+                  const parts = (b.content || '').split(':');
+                  const bTitle = parts.length > 1 ? parts[0].trim() : (b.title || 'Iniciativa');
+                  const bDesc = parts.length > 1 ? parts.slice(1).join(':').trim() : b.content;
+                  return `
+                    <div class="sostenibilidad-programa-item">
+                      <div class="sostenibilidad-prog-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                      </div>
+                      <div class="sostenibilidad-prog-info">
+                        <h3 class="sostenibilidad-prog-title">${bTitle}</h3>
+                        <p class="sostenibilidad-prog-desc">${bDesc}</p>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }))).join('');
+
+    // Renderizado especializado de Plazas Vacantes / Empleo (Diseño oficial COLUA con buscador, contador y acordeón)
+    const jobVacancyHtml = jobVacancyItems.length > 0 ? this._renderJobVacanciesHtml(jobVacancyItems) : '';
+
+    // Renderizado de Banners
+    const bannerHtml = bannerItems.map(b => `
+      <section class="nosotros-contact-banner" style="margin-bottom: 24px;">
+        <div class="nosotros-contact-top">
+          <div class="nosotros-contact-left">
+            <span class="nosotros-sec-eyebrow" style="color:#173789;">${b.subtitle || 'DESTACADO'}</span>
+            <h2 class="nosotros-sec-title" style="margin-bottom:0.4rem;">${b.title}</h2>
+            <p style="font-size:0.9rem;color:#64748b;line-height:1.55;">${b.description || ''}</p>
+          </div>
+          ${b.buttonText ? `
+            <div class="nosotros-contact-actions">
+              <a href="${b.buttonAction || 'tel:77957795'}" class="nosotros-btn-pbx">
+                ${b.buttonText}
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `).join('');
+
+    // Renderizado de Tarjetas Regulares (Productos, Beneficios, PDFs, etc.)
+    const itemsHtml = regularItems.map(i => {
       const isPdf = i.type === 'pdf_document' || (i.buttonAction && i.buttonAction.startsWith('pdf:')) || (i.pdfUrl && i.pdfUrl.length > 0);
       if (isPdf) {
         const rawPdfUrl = i.pdfUrl || (i.buttonAction && i.buttonAction.startsWith('pdf:') ? i.buttonAction.replace('pdf:', '') : '');
         const sizeFormatted = i.fileSize ? ` • ${(i.fileSize / (1024 * 1024)).toFixed(2)} MB` : '';
+        const hasCover = isPdf && !!(i.imageUrl && (i.imageUrl.startsWith('data:image') || i.imageUrl.startsWith('http') || i.imageUrl.startsWith('assets/')));
         return `
-          <div class="clean-product-card" onclick="window.openPdfDocument ? window.openPdfDocument('${rawPdfUrl}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}') : null" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="clean-product-card" onclick="if(event.target.closest('button')) return; window.openPdfDocument ? window.openPdfDocument('${rawPdfUrl}', '${(i.title || 'Documento Oficial').replace(/'/g, "\\'")}', '${i.id}') : null" style="cursor: pointer; border-top: 4px solid #dc2626; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                 <span style="font-size: 0.72rem; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
@@ -1363,9 +1475,19 @@ class SectionsComponent {
                 </span>
                 <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">PDF${sizeFormatted}</span>
               </div>
-              <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px;">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              </div>
+              ${hasCover ? `
+                <div class="pdf-cover-wrap" style="position: relative; margin-bottom: 14px; border-radius: 10px; overflow: hidden; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 190px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                  <img src="${i.imageUrl}" alt="${i.title}" style="width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;" onerror="this.parentElement.style.display='none'" />
+                  <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15, 23, 42, 0.85); color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 4px; backdrop-filter: blur(4px);">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span>Página 1</span>
+                  </div>
+                </div>
+              ` : `
+                <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1.5px solid #fecaca; height: 68px;">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </div>
+              `}
               <h3 class="clean-product-name" style="font-size: 1.12rem; color: #0f172a; margin-bottom: 6px;">${i.title}</h3>
               ${i.subtitle ? `<span style="font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">${i.subtitle}</span>` : ''}
               <p class="clean-product-desc" style="margin-top: 0.5rem; color: #64748b; font-size: 0.88rem; line-height: 1.5;">${i.description || i.shortDescription || 'Documento oficial disponible para lectura y descarga en nueva pestaña.'}</p>
@@ -1373,6 +1495,30 @@ class SectionsComponent {
             <div style="margin-top: 14px;">
               ${this._renderCardButton(i.buttonText || 'Ver Documento PDF', i.buttonAction || ('pdf:' + rawPdfUrl), i.id, 'Ver Documento PDF', 'pdf:' + rawPdfUrl)}
             </div>
+          </div>
+        `;
+      }
+
+      if (i.type === 'benefit_list') {
+        const reqs = Array.isArray(i.benefitItems) && i.benefitItems.length > 0 ? i.benefitItems : (i.subtitle ? i.subtitle.split(',').map(s => s.trim()) : []);
+        return `
+          <div class="clean-product-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div class="clean-product-icon-wrap" style="background: #fdf2f8; border: 1.5px solid #fbcfe8; height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; border-radius: 10px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#db2777" stroke-width="2.2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+              </div>
+              <h3 class="clean-product-name">${i.title}</h3>
+              ${i.description ? `<p class="clean-product-desc" style="margin-top:0.4rem; margin-bottom: 10px;">${i.description}</p>` : ''}
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                ${reqs.map(r => `
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #334155; background: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <span style="color: #16a34a; font-weight: 800;">✓</span>
+                    <span>${r}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            ${this._renderCardButton(i.buttonText, i.buttonAction, i.id, 'Ver Más Información', 'modal:info')}
           </div>
         `;
       }
@@ -1401,11 +1547,17 @@ class SectionsComponent {
           ${desc ? `<p class="clean-subpage-desc">${desc}</p>` : ''}
         </header>
 
-        <div class="clean-product-grid">
-          ${itemsHtml}
-        </div>
+        ${strategicHtml ? `<div class="sostenibilidad-ejes-list" style="margin-bottom: 2rem;">${strategicHtml}</div>` : ''}
+        ${jobVacancyHtml ? `<div class="colua-job-vacancies-list" style="margin-bottom: 2rem;">${jobVacancyHtml}</div>` : ''}
+        ${bannerHtml ? `<div style="margin-bottom: 2rem;">${bannerHtml}</div>` : ''}
 
-        ${items.length === 0 ? `
+        ${regularItems.length > 0 ? `
+          <div class="clean-product-grid">
+            ${itemsHtml}
+          </div>
+        ` : ''}
+
+        ${visibleItems.length === 0 ? `
           <div style="text-align:center;padding:3rem 1rem;color:#64748b;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;">
             <p>No hay contenido publicado en esta sección todavía.</p>
           </div>
@@ -1414,8 +1566,550 @@ class SectionsComponent {
     `;
   }
 
+  // --- 10. BOLSA DE EMPLEO / PLAZAS VACANTES (Especializado) ---
+  async renderEmpleo() {
+    const repo = window.coluaRepository;
+    const sections = await repo.getAllSections();
+    const sec = sections.find(s => s.id === 'sec_empleo' || s.slug === 'empleo') || {
+      id: 'sec_empleo',
+      title: 'Bolsa de Empleo COLUA',
+      description: 'Oportunidades laborales y plazas vacantes en Cooperativa COLUA R.L. Consulta nuestras convocatorias oficiales y postúlate.'
+    };
+
+    let items = await repo.getItemsBySection('sec_empleo');
+    let visibleItems = (items || []).filter(i => i.isVisible !== false && i.isEnabled !== false && i.isDraft !== true);
+
+    // Si no hay elementos en la sección sec_empleo, buscar cualquier elemento de tipo job_vacancy
+    if (visibleItems.length === 0) {
+      try {
+        const allItems = await repo.getAllItems ? await repo.getAllItems() : (repo.getLocalDb().content_items || []);
+        visibleItems = allItems.filter(i => i.type === 'job_vacancy' && i.isVisible !== false && i.isEnabled !== false && i.isDraft !== true);
+      } catch(e) {}
+    }
+
+    const jobVacancyItems = [];
+    const bannerItems = [];
+    const regularItems = [];
+
+    for (const i of visibleItems) {
+      if (i.type === 'job_vacancy') {
+        jobVacancyItems.push(i);
+      } else if (i.type === 'banner') {
+        bannerItems.push(i);
+      } else {
+        regularItems.push(i);
+      }
+    }
+
+    // Si aún no hay vacantes en la BD, extraer las vacantes canónicas por defecto
+    if (jobVacancyItems.length === 0) {
+      const defData = repo._getDefaultData ? repo._getDefaultData() : null;
+      if (defData && Array.isArray(defData.content_items)) {
+        defData.content_items.filter(i => i.type === 'job_vacancy').forEach(v => jobVacancyItems.push(v));
+      }
+    }
+
+    const bannerHtml = bannerItems.map(b => `
+      <section class="nosotros-contact-banner" style="margin-bottom: 24px;">
+        <div class="nosotros-contact-top">
+          <div class="nosotros-contact-left">
+            <span class="nosotros-sec-eyebrow" style="color:#173789;">${b.subtitle || 'DESTACADO'}</span>
+            <h2 class="nosotros-sec-title" style="margin-bottom:0.4rem;">${b.title}</h2>
+            <p style="font-size:0.9rem;color:#64748b;line-height:1.55;">${b.description || ''}</p>
+          </div>
+          ${b.buttonText ? `
+            <div class="nosotros-contact-actions">
+              <a href="${b.buttonAction || 'tel:77957795'}" class="nosotros-btn-pbx">
+                ${b.buttonText}
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `).join('');
+
+    const regularHtml = regularItems.map(i => `
+      <div class="clean-product-card">
+        <div>
+          ${i.imageUrl || i.imagePath || i.icon ? `
+            <div class="clean-product-icon-wrap" style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f5f9;">
+              ${i.imageUrl || i.imagePath ? `<img src="${i.imageUrl || i.imagePath}" alt="${i.title}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"/>` : `<span style="font-size: 2rem;">${i.icon}</span>`}
+            </div>
+          ` : ''}
+          <h3 class="clean-product-name">${i.title}</h3>
+          ${i.subtitle ? `<span style="font-size:0.8rem;font-weight:600;color:#2563eb;">${i.subtitle}</span>` : ''}
+          <p class="clean-product-desc" style="margin-top:0.5rem;">${i.description || i.shortDescription || ''}</p>
+        </div>
+        ${this._renderCardButton(i.buttonText, i.buttonAction, i.id, 'Ver Más Información', 'modal:info')}
+      </div>
+    `).join('');
+
+    return `
+      <div class="clean-subpage-container">
+        <header class="clean-subpage-header">
+          <h1 class="clean-subpage-title">${sec.title || 'Bolsa de Empleo COLUA'}</h1>
+          <p class="clean-subpage-desc">${sec.description || 'Oportunidades laborales y plazas vacantes en Cooperativa COLUA R.L. Consulta nuestras convocatorias oficiales y postúlate.'}</p>
+        </header>
+
+        ${bannerHtml ? `<div style="margin-bottom: 2rem;">${bannerHtml}</div>` : ''}
+        ${this._renderJobVacanciesHtml(jobVacancyItems)}
+        ${regularItems.length > 0 ? `<div class="clean-product-grid" style="margin-top: 2rem;">${regularHtml}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // Renderizado maestro de Plazas Vacantes con Buscador, Contador, Acordeón y Vista Móvil Optimizada
+  _renderJobVacanciesHtml(jobVacancyItems) {
+    if (!jobVacancyItems || jobVacancyItems.length === 0) {
+      return `
+        <div style="text-align:center;padding:3rem 1rem;color:#64748b;background:#f8fafc;border-radius:12px;border:1px dashed #e2e8f0;margin-bottom:2rem;">
+          <p style="margin:0;font-size:1.05rem;font-weight:700;color:#173789;">No hay plazas vacantes publicadas en este momento.</p>
+          <span style="font-size:0.88rem;color:#64748b;display:block;margin-top:6px;">Te invitamos a consultar periódicamente nuestras convocatorias laborales oficiales.</span>
+        </div>
+      `;
+    }
+
+    const totalCount = jobVacancyItems.length;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
+    const cardsHtml = jobVacancyItems.map((job, index) => {
+      // Regla: mostrar como acordeón desde la segunda plaza (index >= 1 colapsadas, index 0 expandida en desktop).
+      // En móvil: todas inician colapsadas mostrando SOLO el nombre de la plaza y botón 'Mostrar más'.
+      const isExpanded = (!isMobile && index === 0);
+      const cardClass = isExpanded ? 'is-expanded is-first-card' : 'is-collapsed';
+
+      const reqs = Array.isArray(job.requirements) ? job.requirements : [];
+      const skills = Array.isArray(job.skillsList) ? job.skillsList : [];
+      const benefits = Array.isArray(job.benefitItems) ? job.benefitItems : [];
+      const deadline = job.deadline || '';
+      const email = job.leadEmail || 'talentoh@coluarl.com.gt';
+      const hasImage = !!(job.imageUrl && job.imageUrl.length > 0);
+      const applyMailto = job.buttonAction && job.buttonAction.startsWith('mailto:') 
+        ? job.buttonAction 
+        : `mailto:${email}?subject=${encodeURIComponent('Postulación: ' + job.title)}`;
+
+      // Texto searchable completo para filtrado en tiempo real
+      const searchable = this._normalizeText([
+        job.title,
+        job.subtitle,
+        job.description,
+        ...reqs,
+        ...skills,
+        ...benefits,
+        deadline,
+        email
+      ].join(' '));
+
+      return `
+        <article 
+          class="colua-job-vacancy-card ${cardClass}" 
+          id="job-card-${job.id}" 
+          data-job-id="${job.id}" 
+          data-search="${this._escapeAttr(searchable)}"
+        >
+          <!-- Encabezado Acordeón:
+               - En desktop: Nombre de plaza, Sede, Convocatoria Oficial, Fecha límite y Botón Ver detalles
+               - En móvil (<= 768px): SOLO Nombre de la plaza y Botón Mostrar más -->
+          <header 
+            class="colua-job-card-header" 
+            onclick="window.sectionsComponent.toggleJobAccordion('${job.id}', event)"
+            role="button" 
+            tabindex="0"
+            aria-expanded="${isExpanded ? 'true' : 'false'}"
+            aria-controls="job-body-${job.id}"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.sectionsComponent.toggleJobAccordion('${job.id}', event);}"
+          >
+            <div class="colua-job-header-left">
+              <span class="colua-job-briefcase-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              </span>
+              
+              <div class="colua-job-header-titles">
+                <!-- Nombre de la plaza (Visible en móvil y desktop) -->
+                <h3 class="colua-job-card-title">${job.title}</h3>
+                
+                <!-- Metadatos de escritorio (Ocultos en móvil por CSS para cumplir 'en vista móvil solo mostrar el nombre') -->
+                <div class="colua-job-header-meta">
+                  <span class="colua-job-meta-pill colua-job-meta-sede">
+                    📍 ${job.subtitle || 'Sede Central'}
+                  </span>
+                  <span class="colua-job-meta-pill colua-job-meta-tipo">
+                    Convocatoria Oficial
+                  </span>
+                  ${deadline ? `
+                    <span class="colua-job-meta-pill colua-job-meta-deadline">
+                      ⏰ Límite: ${deadline}
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón de Toggle Acordeón:
+                 - En desktop: 'Ver detalles' / 'Ocultar detalles'
+                 - En móvil: 'Mostrar más' / 'Mostrar menos' -->
+            <button 
+              type="button" 
+              class="colua-job-toggle-btn" 
+              onclick="event.stopPropagation(); window.sectionsComponent.toggleJobAccordion('${job.id}', event);"
+              aria-label="Expandir o contraer detalles de la plaza ${job.title}"
+            >
+              <span class="colua-job-btn-text-desktop">${isExpanded ? 'Ocultar detalles' : 'Ver detalles'}</span>
+              <span class="colua-job-btn-text-mobile">${isExpanded ? 'Mostrar menos' : 'Mostrar más'}</span>
+              <svg class="colua-job-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </header>
+
+          <!-- Cuerpo Completo con Toda la Información (Colapsable / Acordeón) -->
+          <div class="colua-job-card-body" id="job-body-${job.id}">
+            <div class="colua-job-card-grid">
+              
+              <!-- Columna Izquierda: Identidad Institucional de Vacante -->
+              <div class="colua-job-card-left-col">
+                <div>
+                  <div class="colua-job-official-badge">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                  </div>
+                  <span class="colua-job-kicker">CONVOCATORIA OFICIAL</span>
+                  <div class="colua-job-badge-heading">
+                    PLAZA<br/><span style="color: #60a5fa;">VACANTE</span>
+                  </div>
+                </div>
+
+                <!-- Logo COLUA -->
+                <div class="colua-job-logo-divider">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 28px; height: 28px; object-fit: contain;" onerror="this.src='assets/logo_colua.png'" />
+                    <span style="font-size: 0.85rem; font-weight: 800; color: white; letter-spacing: 0.5px;">COLUA MICOOPE</span>
+                  </div>
+                </div>
+
+                <!-- Acciones de afiche / fecha límite -->
+                <div class="colua-job-deadline-wrap">
+                  ${deadline ? `
+                    <div class="colua-job-deadline-box">
+                      <span style="font-size: 0.68rem; color: #fef08a; font-weight: 800; display: block; text-transform: uppercase;">FECHA LÍMITE:</span>
+                      <strong style="font-size: 0.88rem; color: #fde047;">${deadline}</strong>
+                    </div>
+                  ` : ''}
+
+                  ${hasImage ? `
+                    <button type="button" class="btn-view-job-flyer colua-job-flyer-btn" onclick="window.sectionsComponent.viewJobFlyer('${job.imageUrl}', '${job.title.replace(/'/g, "\\'")}')">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <span>Ver Afiche Oficial</span>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Columna Derecha: Contenido Detallado del Puesto -->
+              <div class="colua-job-card-right-col">
+                <div>
+                  <!-- Header interno de la plaza -->
+                  <div class="colua-job-meta-top">
+                    <span class="colua-job-sede-tag">
+                      📍 Sede: <strong>${job.subtitle || 'Oficinas Centrales'}</strong>
+                    </span>
+                    <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">Oportunidad Laboral</span>
+                  </div>
+
+                  <h2 class="colua-job-title-large">
+                    ${job.title}
+                  </h2>
+
+                  ${job.description ? `
+                    <p class="colua-job-description">${job.description}</p>
+                  ` : ''}
+
+                  <!-- Grilla de Requisitos, Habilidades y Ofrecemos -->
+                  <div class="colua-job-details-grid">
+                    
+                    <!-- Requisitos -->
+                    ${reqs.length > 0 ? `
+                      <div class="colua-job-detail-card colua-job-reqs-card">
+                        <div class="colua-job-detail-head">
+                          <span style="font-size: 0.9rem;">📋</span>
+                          <strong>Requisitos</strong>
+                        </div>
+                        <ul class="colua-job-detail-list">
+                          ${reqs.map(r => `<li>${r.replace(/^[•\-*]\s*/, '')}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+
+                    <!-- Habilidades -->
+                    ${skills.length > 0 ? `
+                      <div class="colua-job-detail-card colua-job-skills-card">
+                        <div class="colua-job-detail-head">
+                          <span style="font-size: 0.9rem;">💡</span>
+                          <strong>Habilidades</strong>
+                        </div>
+                        <ul class="colua-job-detail-list">
+                          ${skills.map(s => `<li>${s.replace(/^[•\-*]\s*/, '')}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+
+                    <!-- Ofrecemos -->
+                    ${benefits.length > 0 ? `
+                      <div class="colua-job-detail-card colua-job-benefits-card">
+                        <div class="colua-job-detail-head" style="color: #166534;">
+                          <span style="font-size: 0.9rem;">🌟</span>
+                          <strong style="color: #166534;">Ofrecemos</strong>
+                        </div>
+                        <ul class="colua-job-detail-list" style="color: #14532d;">
+                          ${benefits.map(b => `<li>${b.replace(/^[•\-*]\s*/, '')}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+
+                <!-- Banner Inferior de Aplicación Directa -->
+                <div class="colua-job-apply-banner">
+                  <div>
+                    <span style="font-size: 0.75rem; color: #0369a1; font-weight: 700; display: block;">Aplica enviando tu hoja de vida / CV a:</span>
+                    <a href="${applyMailto}" class="colua-job-apply-email">
+                      ✉️ ${email}
+                    </a>
+                  </div>
+                  <div>
+                    <a href="${applyMailto}" class="btn btn-primary colua-job-apply-btn">
+                      <span>${job.buttonText || 'Enviar CV por Correo'}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    return `
+      <section class="colua-jobs-section" aria-label="Bolsa de Empleo">
+        <!-- Barra de Herramientas: Buscador en tiempo real y Contador de Plazas -->
+        <div class="colua-jobs-toolbar">
+          <div class="colua-jobs-search-box">
+            <span class="colua-jobs-search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input 
+              type="text" 
+              id="colua-job-search-input" 
+              class="colua-job-search-input" 
+              placeholder="Buscar plaza por puesto, sede, profesión o palabra clave..." 
+              aria-label="Buscar plazas vacantes" 
+              oninput="window.sectionsComponent && window.sectionsComponent.filterJobs(this.value)"
+              onkeyup="if(event.key==='Escape') window.sectionsComponent && window.sectionsComponent.clearJobSearch()"
+            />
+            <button 
+              type="button" 
+              id="colua-job-search-clear" 
+              class="colua-job-search-clear" 
+              aria-label="Limpiar búsqueda" 
+              onclick="window.sectionsComponent && window.sectionsComponent.clearJobSearch()"
+              style="display: none;"
+            >✕</button>
+          </div>
+          
+          <div class="colua-jobs-counter-wrap">
+            <div class="colua-jobs-counter-pill" id="colua-jobs-counter" data-total="${totalCount}">
+              <span class="colua-jobs-counter-icon">💼</span>
+              <span id="colua-jobs-counter-text"><strong>${totalCount}</strong> ${totalCount === 1 ? 'plaza vacante disponible' : 'plazas vacantes disponibles'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Plazas en Acordeón -->
+        <div class="colua-job-vacancies-list" id="colua-job-vacancies-list">
+          ${cardsHtml}
+        </div>
+
+        <!-- Estado Vacío cuando la búsqueda no coincide -->
+        <div class="colua-job-no-results" id="colua-job-no-results" style="display: none;">
+          <div class="colua-job-no-results-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0 0 6px 0;">No se encontraron plazas vacantes</h3>
+          <p style="font-size: 0.88rem; color: #64748b; margin: 0 0 16px 0;">No encontramos coincidencias para el criterio buscado. Puedes revisar todas las convocatorias activas.</p>
+          <button type="button" class="btn btn-primary" onclick="window.sectionsComponent && window.sectionsComponent.clearJobSearch()" style="padding: 9px 20px; font-size: 0.85rem; font-weight: 700; border-radius: 8px; background: var(--colua-navy); color: white; border: none; cursor: pointer;">
+            Ver todas las plazas vacantes
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  // Métodos interactivos del Buscador y Acordeón
+  _normalizeText(str) {
+    return (str || '')
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  _escapeAttr(str) {
+    return (str || '').replace(/"/g, '&quot;');
+  }
+
+  filterJobs(query) {
+    const q = this._normalizeText(query);
+    const clearBtn = document.getElementById('colua-job-search-clear');
+    if (clearBtn) {
+      clearBtn.style.display = q ? 'flex' : 'none';
+    }
+
+    const cards = document.querySelectorAll('.colua-job-vacancy-card');
+    const noResults = document.getElementById('colua-job-no-results');
+    const counterText = document.getElementById('colua-jobs-counter-text');
+    const counterPill = document.getElementById('colua-jobs-counter');
+    const totalCount = counterPill ? parseInt(counterPill.getAttribute('data-total') || '0', 10) : cards.length;
+
+    let matchCount = 0;
+    const tokens = q.split(/\s+/).filter(Boolean);
+
+    cards.forEach(card => {
+      const searchData = card.getAttribute('data-search') || '';
+      const matches = tokens.length === 0 || tokens.every(token => searchData.includes(token));
+
+      if (matches) {
+        card.classList.remove('is-search-hidden');
+        matchCount++;
+        // Si hay búsqueda activa, expandir la tarjeta para que el usuario vea el contenido coincidente
+        if (tokens.length > 0) {
+          card.classList.remove('is-collapsed');
+          card.classList.add('is-expanded');
+          const header = card.querySelector('.colua-job-card-header');
+          if (header) header.setAttribute('aria-expanded', 'true');
+          const desktopText = card.querySelector('.colua-job-btn-text-desktop');
+          const mobileText = card.querySelector('.colua-job-btn-text-mobile');
+          if (desktopText) desktopText.textContent = 'Ocultar detalles';
+          if (mobileText) mobileText.textContent = 'Mostrar menos';
+        }
+      } else {
+        card.classList.add('is-search-hidden');
+      }
+    });
+
+    if (noResults) {
+      noResults.style.display = (matchCount === 0 && tokens.length > 0) ? 'block' : 'none';
+    }
+
+    if (counterText) {
+      if (tokens.length === 0) {
+        counterText.innerHTML = `<strong>${totalCount}</strong> ${totalCount === 1 ? 'plaza vacante disponible' : 'plazas vacantes disponibles'}`;
+      } else {
+        counterText.innerHTML = `<strong>${matchCount}</strong> de <strong>${totalCount}</strong> ${matchCount === 1 ? 'plaza encontrada' : 'plazas encontradas'}`;
+      }
+    }
+  }
+
+  clearJobSearch() {
+    const input = document.getElementById('colua-job-search-input');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    this.filterJobs('');
+    this._resetAccordionState();
+  }
+
+  _resetAccordionState() {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+    const cards = document.querySelectorAll('.colua-job-vacancy-card');
+    cards.forEach((card, index) => {
+      card.classList.remove('is-search-hidden');
+      const isFirst = index === 0;
+      // En desktop: plaza 1 expandida, plaza 2+ colapsadas en acordeón.
+      // En móvil: todas colapsadas mostrando solo nombre de la plaza y botón mostrar más.
+      const shouldExpand = !isMobile && isFirst;
+      if (shouldExpand) {
+        card.classList.remove('is-collapsed');
+        card.classList.add('is-expanded');
+      } else {
+        card.classList.remove('is-expanded');
+        card.classList.add('is-collapsed');
+      }
+      const header = card.querySelector('.colua-job-card-header');
+      if (header) header.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+      const desktopText = card.querySelector('.colua-job-btn-text-desktop');
+      const mobileText = card.querySelector('.colua-job-btn-text-mobile');
+      if (desktopText) desktopText.textContent = shouldExpand ? 'Ocultar detalles' : 'Ver detalles';
+      if (mobileText) mobileText.textContent = shouldExpand ? 'Mostrar menos' : 'Mostrar más';
+    });
+  }
+
+  toggleJobAccordion(jobId, event) {
+    if (event) {
+      // Si el clic fue en un enlace interactivo interior, no interferir
+      if (event.target && event.target.tagName === 'A') return;
+    }
+    const card = document.getElementById(`job-card-${jobId}`);
+    if (!card) return;
+
+    card.setAttribute('data-user-interacted', 'true');
+    const isCollapsed = card.classList.contains('is-collapsed');
+    const header = card.querySelector('.colua-job-card-header');
+    const desktopText = card.querySelector('.colua-job-btn-text-desktop');
+    const mobileText = card.querySelector('.colua-job-btn-text-mobile');
+
+    if (isCollapsed) {
+      card.classList.remove('is-collapsed');
+      card.classList.add('is-expanded');
+      if (header) header.setAttribute('aria-expanded', 'true');
+      if (desktopText) desktopText.textContent = 'Ocultar detalles';
+      if (mobileText) mobileText.textContent = 'Mostrar menos';
+    } else {
+      card.classList.remove('is-expanded');
+      card.classList.add('is-collapsed');
+      if (header) header.setAttribute('aria-expanded', 'false');
+      if (desktopText) desktopText.textContent = 'Ver detalles';
+      if (mobileText) mobileText.textContent = 'Mostrar más';
+    }
+  }
+
+  viewJobFlyer(imgUrl, title) {
+    window.app?.showModal(`
+      <div style="text-align: center; max-width: 580px; width: 100%; padding: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--colua-navy); margin: 0;">${title}</h3>
+          <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 4px 10px; font-size: 0.78rem;">✕ Cerrar</button>
+        </div>
+        <div style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,0.12); margin-bottom: 14px; max-height: 72vh; display: flex; justify-content: center; background: #0f172a;">
+          <img src="${imgUrl}" alt="${title}" style="max-width: 100%; max-height: 72vh; object-fit: contain; display: block;" onerror="this.src='assets/distintivo_colua.png'" />
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+          <a href="${imgUrl}" download="Convocatoria_${title}.jpg" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.82rem; background: var(--colua-navy); text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+            <span>Descargar Afiche Oficial</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </a>
+          <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 8px 16px; font-size: 0.82rem;">Cerrar</button>
+        </div>
+      </div>
+    `);
+  }
+
   attachEvents() {
-    // Eventos interactivos de secciones si son requeridos
+    // Si estamos en vista móvil (<= 768px), garantizar que las tarjetas inicien colapsadas mostrando solo nombre y botón
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      const cards = document.querySelectorAll('.colua-job-vacancy-card');
+      cards.forEach(card => {
+        if (!card.hasAttribute('data-user-interacted')) {
+          card.classList.remove('is-expanded');
+          card.classList.add('is-collapsed');
+          const header = card.querySelector('.colua-job-card-header');
+          if (header) header.setAttribute('aria-expanded', 'false');
+          const mobileText = card.querySelector('.colua-job-btn-text-mobile');
+          if (mobileText) mobileText.textContent = 'Mostrar más';
+        }
+      });
+    }
   }
 }
 
