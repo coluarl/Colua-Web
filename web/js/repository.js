@@ -4089,9 +4089,29 @@ class ColuaRepository {
     return (db.forms || []).find(f => f.id === id || f.targetCardId === id);
   }
 
+  async submitFormLead(lead) {
+    if (!lead.id) lead.id = 'lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    lead.createdAt = Date.now();
+    lead.fechaStr = new Date().toLocaleString();
+    lead.estado = lead.estado || 'Pendiente';
+
+    const db = this.getLocalDb();
+    if (!db.form_submissions) db.form_submissions = [];
+    db.form_submissions.unshift(lead);
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('form_submissions').doc(lead.id).set(lead, { merge: true });
+      } catch (e) {
+        console.warn('Error guardando lead en Firestore:', e);
+      }
+    }
+    return lead;
+  }
+
   async getFormLeads() {
     return await this.getFormSubmissions();
-  }
   }
 
   // Aliases para compatibilidad con admin.js y otros componentes

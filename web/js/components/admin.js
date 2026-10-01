@@ -3848,21 +3848,6 @@ class AdminComponent {
                         </span>
                     </div>
 
-                    <!-- Vista Previa en Vivo mientras escribes -->
-                    <div style="margin-bottom: 16px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 12px 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-size: 0.72rem; font-weight: 800; color: #475569; letter-spacing: 0.4px;">
-                                👁️ VISTA PREVIA EN TIEMPO REAL:
-                            </span>
-                            <span style="font-size: 0.68rem; color: #16a34a; font-weight: 700; background: #dcfce7; padding: 1px 6px; border-radius: 4px;">
-                                Actualización en vivo
-                            </span>
-                        </div>
-                        <div id="live-edit-card-preview-container" style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
-                            <!-- Se actualiza con input listeners -->
-                        </div>
-                    </div>
-
                     <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--colua-gray-200); padding-top: 14px;">
                         <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 9px 16px;">Cancelar</button>
                         <button type="button" id="btn-save-item-modal" onclick="window.adminComponent.saveCurrentItemModal(event)" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; background: var(--colua-navy); cursor: pointer; border-radius: 8px;">Guardar ${activeTypeName}</button>
