@@ -210,8 +210,28 @@ class HomeComponent {
         clickAction = `window.coluaRouter ? window.coluaRouter.navigate('${targetRoute}') : (window.location.hash='#${targetRoute}')`;
       }
 
+
       let cardTitle = (s.title || '').trim();
       let cardSubtitle = (s.subtitle || s.description || s.shortDescription || '').trim();
+
+            const lowerTitle = cardTitle.toLowerCase();
+            const lowerSub = cardSubtitle.toLowerCase();
+            const rawId = (s.id || '').toLowerCase();
+            // Sanitizar solo si contiene strings residuales de versiones anteriores
+            if (lowerSub.includes('ahorro!') || lowerTitle.includes('ahorroahorro')) {
+              cardTitle = cardTitle.replace(/ahorroahorro/gi, 'Ahorros');
+              if (lowerSub.includes('ahorro!')) cardSubtitle = 'Cuentas de ahorro';
+            } else if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('créditocrédito') || lowerTitle.includes('productivo, consumo')) {
+              cardTitle = cardTitle.includes('productivo, consumo') ? 'Créditos' : cardTitle.replace(/créditocrédito/gi, 'Créditos');
+              if (lowerSub.includes('crédito!') || lowerSub.includes('credito!') || lowerTitle.includes('productivo, consumo')) cardSubtitle = 'Líneas de crédito';
+            } else if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros de vida seguros') || lowerTitle.includes('seguros médicos')) {
+              cardTitle = cardTitle.includes('seguros médicos') ? 'Seguros' : cardTitle.replace(/seguros de vida seguros/gi, 'Seguros');
+              if (lowerSub.includes('seguro!') || lowerTitle.includes('seguros médicos')) cardSubtitle = 'Protección y vida';
+            } else if (lowerSub.includes('remesa!') || lowerTitle.includes('remesas dirigidas')) {
+              cardTitle = cardTitle.replace(/remesas dirigidas/gi, 'Remesas');
+              if (lowerSub.includes('remesa!')) cardSubtitle = 'Recibe tu dinero';
+            }
+
 
       const lowerTitle = cardTitle.toLowerCase();
       const lowerSub = cardSubtitle.toLowerCase();

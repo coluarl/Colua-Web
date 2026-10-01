@@ -1,4 +1,7 @@
+
 const CACHE_NAME = 'colua-web-digital-v6.9.1-fix-repo';
+
+
 const STATIC_ASSETS = [
   './',
   './index.html',

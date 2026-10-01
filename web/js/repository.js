@@ -1772,6 +1772,13 @@ class ColuaRepository {
       { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros", displayOrder: 11, orderIndex: 11, isVisible: true, subItems: [] },
       { id: "topnav_gobierno", label: "Gobierno Cooperativo", targetSectionId: "sec_nosotros", displayOrder: 12, orderIndex: 12, isVisible: true, subItems: [] },
       { id: "topnav_mi_empleo", label: "Mi empleo", targetSectionId: "sec_empleo", displayOrder: 13, orderIndex: 13, isVisible: true, subItems: [] }
+
+      { id: "topnav_empleo", label: "Empleo", targetSectionId: "sec_empleo", displayOrder: 10, orderIndex: 10, isVisible: true, subItems: [] },
+      { id: "topnav_agencias", label: "Agencias", targetSectionId: "sec_agencias", displayOrder: 11, orderIndex: 11, isVisible: true, subItems: [] },
+      { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros", displayOrder: 12, orderIndex: 12, isVisible: true, subItems: [] },
+      { id: "topnav_gobierno", label: "Gobierno Cooperativo", targetSectionId: "sec_nosotros", displayOrder: 13, orderIndex: 13, isVisible: true, subItems: [] },
+      { id: "topnav_mi_empleo", label: "Mi empleo", targetSectionId: "sec_empleo", displayOrder: 14, orderIndex: 14, isVisible: true, subItems: [] }
+
     ];
   }
 
@@ -1788,6 +1795,19 @@ class ColuaRepository {
         db.top_nav_items = db.top_nav_items.filter(n => n.id !== 'topnav_empleo');
         modified = true;
       }
+
+    if (db.sections && db.sections.some(s => s.id === 'sec_empleo') && !db.top_nav_items.some(n => n.targetSectionId === 'sec_empleo' || (n.label && n.label.toLowerCase() === 'empleo'))) {
+      db.top_nav_items.push({
+        id: "topnav_empleo",
+        label: "Empleo",
+        targetSectionId: "sec_empleo",
+        displayOrder: 10,
+        orderIndex: 10,
+        isVisible: true,
+        subItems: []
+      });
+      modified = true;
+
     }
     if (!db.top_nav_items.some(n => (n.label && n.label.toLowerCase().includes('gobierno')) || (n.id && n.id.includes('gobierno')))) {
       db.top_nav_items.push({
@@ -1796,6 +1816,10 @@ class ColuaRepository {
         targetSectionId: "sec_nosotros",
         displayOrder: 12,
         orderIndex: 12,
+
+        displayOrder: 13,
+        orderIndex: 13,
+
         isVisible: true,
         subItems: []
       });
@@ -1808,6 +1832,10 @@ class ColuaRepository {
         targetSectionId: "sec_empleo",
         displayOrder: 13,
         orderIndex: 13,
+
+        displayOrder: 14,
+        orderIndex: 14,
+
         isVisible: true,
         subItems: []
       });
@@ -4093,6 +4121,33 @@ class ColuaRepository {
     return (db.forms || []).find(f => f.id === id || f.targetCardId === id);
   }
 
+<<<<<<< HEAD
+=======
+  async getFormLeads() {
+    return await this.getFormSubmissions();
+  }
+  async submitFormLead(lead) {
+    if (!lead.id) lead.id = 'lead_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    lead.createdAt = Date.now();
+    lead.fechaStr = new Date().toLocaleString();
+    lead.estado = lead.estado || 'Pendiente';
+
+    const db = this.getLocalDb();
+    if (!db.form_submissions) db.form_submissions = [];
+    db.form_submissions.unshift(lead);
+    this.saveLocalDb(db);
+
+    if (this.fb && this.fb.db) {
+      try {
+        await this.fb.collection('form_submissions').doc(lead.id).set(lead, { merge: true });
+      } catch (e) {
+        console.warn('Error guardando lead en Firestore:', e);
+      }
+    }
+    return lead;
+  }
+
+>>>>>>> 1d26a2db329d9691c88af5d9f6bc59c90c36a345
   async getFormLeads() {
     return await this.getFormSubmissions();
   }

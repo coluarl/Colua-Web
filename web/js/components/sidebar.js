@@ -92,6 +92,9 @@ class SidebarComponent {
       { id: "topnav_beneficios", label: "Beneficios", targetSectionId: "sec_beneficios" },
       { id: "topnav_sostenibilidad", label: "Sostenibilidad", targetSectionId: "sec_sostenibilidad" },
       { id: "topnav_noticias", label: "Noticias", targetSectionId: "sec_noticias" },
+
+      { id: "topnav_empleo", label: "Empleo", targetSectionId: "sec_empleo" },
+
       { id: "topnav_agencias", label: "Agencias", targetSectionId: "sec_agencias" },
       { id: "topnav_nosotros", label: "Nosotros", targetSectionId: "sec_nosotros" },
       { id: "topnav_gobierno", label: "Gobierno Cooperativo", targetSectionId: "sec_nosotros" },
