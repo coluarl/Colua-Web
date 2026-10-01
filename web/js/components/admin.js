@@ -1,4 +1,13 @@
-// web/js/components/admin.js - Portal de Administración CMS COLUA R.L.
+// Referencia global segura al repositorio COLUA
+var coluaRepo = new Proxy({}, {
+    get(target, prop) {
+        const repo = window.coluaRepository || window.coluaRepo;
+        if (repo && typeof repo[prop] === 'function') {
+            return repo[prop].bind(repo);
+        }
+        return repo ? repo[prop] : undefined;
+    }
+});
 
 // Iconos Planos Minimalistas (SVG)
 const ADMIN_ICONS = {
@@ -30,7 +39,8 @@ const ADMIN_ICONS = {
     cloud: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>`,
     building: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>`,
     news: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>`,
-    forms: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>`
+    forms: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>`,
+    reportes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`
 };
 
 // Catálogo Rápido de Assets e Íconos Oficiales (assets/)
@@ -175,9 +185,6 @@ class AdminComponent {
                         <button class="cms-tab-btn ${this.activeTab === 'stats' ? 'active' : ''}" data-tab="stats" style="display: inline-flex; align-items: center; gap: 6px;">
                             ${ADMIN_ICONS.chart} <span>Estadísticas</span>
                         </button>
-                        <button class="cms-tab-btn ${this.activeTab === 'sync' ? 'active' : ''}" data-tab="sync" style="display: inline-flex; align-items: center; gap: 6px;">
-                            ${ADMIN_ICONS.sync} <span>Publicación</span>
-                        </button>
                         ${authService.isSuperAdmin() ? `
                             <button class="cms-tab-btn ${this.activeTab === 'rbac' ? 'active' : ''}" data-tab="rbac" style="display: inline-flex; align-items: center; gap: 6px;">
                                 ${ADMIN_ICONS.users} <span>Usuarios y Roles</span>
@@ -186,9 +193,18 @@ class AdminComponent {
                         <button class="cms-tab-btn ${this.activeTab === 'audit' ? 'active' : ''}" data-tab="audit" style="display: inline-flex; align-items: center; gap: 6px;">
                             ${ADMIN_ICONS.audit} <span>Auditoría</span>
                         </button>
+                        <button class="cms-tab-btn ${this.activeTab === 'reportes' ? 'active' : ''}" data-tab="reportes" style="display: inline-flex; align-items: center; gap: 6px;">
+                            ${ADMIN_ICONS.reportes} <span>Reportes</span>
+                        </button>
                         <button class="cms-tab-btn ${this.activeTab === 'instrucciones' ? 'active' : ''}" data-tab="instrucciones" style="display: inline-flex; align-items: center; gap: 6px;">
                             ${ADMIN_ICONS.book} <span>Instrucciones</span>
                         </button>
+                        <div style="margin-left: auto; display: flex; align-items: center; padding: 4px 8px;">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 5px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #bbf7d0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); white-space: nowrap;">
+                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 6px #22c55e;"></span>
+                                Publicación Automática en Línea
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -396,37 +412,49 @@ class AdminComponent {
                 const userVal = container.querySelector('#admin-user-input').value.trim();
                 const passVal = passInput.value;
 
-                const res = await authService.loginAdminWithCredentials(userVal, passVal);
-                if (res.success && authService.isAdminSessionActive()) {
-                    const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
-                    if (window.Swal) {
-                        await Swal.fire({
-                            title: "¡Bienvenido al Panel CMS!",
-                            text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
-                            icon: "success",
-                            timer: 1500,
-                            showConfirmButton: false,
-                            draggable: true
-                        });
+                try {
+                    const res = await authService.loginAdminWithCredentials(userVal, passVal);
+                    if (res && res.success && authService.isAdminSessionActive()) {
+                        const roleLabel = authService.isSuperAdmin() ? 'Super Administrador' : (authService.isManager() ? 'Manager' : 'Administrador');
+                        if (window.Swal) {
+                            await Swal.fire({
+                                title: "¡Bienvenido al Panel CMS!",
+                                text: `Sesión administrativa iniciada con rol: ${roleLabel}.`,
+                                icon: "success",
+                                timer: 1500,
+                                showConfirmButton: false,
+                                draggable: true
+                            });
+                        } else {
+                            app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        }
+                        this.render(container);
                     } else {
-                        app.showToast(`Bienvenido al Panel CMS (${roleLabel})`, 'success');
+                        const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
+                            ? res.error
+                            : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                        if (window.Swal) {
+                            Swal.fire({
+                                title: "Acceso Denegado",
+                                text: cleanErr,
+                                icon: "error",
+                                draggable: true,
+                                confirmButtonColor: "#173789",
+                                confirmButtonText: "Reintentar"
+                            });
+                        } else {
+                            app.showToast(cleanErr, 'danger');
+                        }
                     }
-                    this.render(container);
-                } else {
-                    const cleanErr = (res && res.error && !res.error.startsWith('Firebase:') && !res.error.includes('(auth/'))
-                        ? res.error
-                        : "Credenciales incorrectas o usuario no autorizado para el panel administrativo.";
+                } catch (submitErr) {
+                    console.error('[AdminComponent] Error al iniciar sesión administrativa:', submitErr);
                     if (window.Swal) {
                         Swal.fire({
-                            title: "Acceso Denegado",
-                            text: cleanErr,
+                            title: "Error de Validación",
+                            text: submitErr.message || "Ocurrió un error inesperado al procesar las credenciales.",
                             icon: "error",
-                            draggable: true,
-                            confirmButtonColor: "#173789",
-                            confirmButtonText: "Reintentar"
+                            confirmButtonColor: "#173789"
                         });
-                    } else {
-                        app.showToast(cleanErr, 'danger');
                     }
                 }
             });
@@ -486,6 +514,10 @@ class AdminComponent {
 
         contentEl.innerHTML = `<div style="text-align: center; padding: 40px;"><div class="spinner"></div></div>`;
 
+        if (this.activeTab === 'sync') {
+            this.activeTab = 'pantallas';
+        }
+
         try {
             switch (this.activeTab) {
                 case 'pantallas':
@@ -500,14 +532,14 @@ class AdminComponent {
                 case 'stats':
                     await this.renderTabStats(contentEl);
                     break;
-                case 'sync':
-                    await this.renderTabSync(contentEl);
-                    break;
                 case 'rbac':
                     await this.renderTabRBAC(contentEl);
                     break;
                 case 'audit':
                     await this.renderTabAudit(contentEl);
+                    break;
+                case 'reportes':
+                    await this.renderTabReportes(contentEl);
                     break;
                 case 'instrucciones':
                     await this.renderTabInstrucciones(contentEl);
@@ -867,6 +899,7 @@ class AdminComponent {
                 if (confirm.isConfirmed) {
                     await coluaRepo.deleteTopNavItem(id);
                     window.navbarComponent?.refresh();
+                    window.sidebarComponent?.refresh();
                     Swal.fire({
                         title: "¡Botón Eliminado!",
                         text: `El botón "${label}" ha sido eliminado del menú.`,
@@ -915,6 +948,7 @@ class AdminComponent {
                 if (confirm.isConfirmed) {
                     await coluaRepo.deleteTopNavSubItem(parentId, subId);
                     window.navbarComponent?.refresh();
+                    window.sidebarComponent?.refresh();
                     Swal.fire({
                         title: "¡Sub-botón Eliminado!",
                         icon: "success",
@@ -936,6 +970,7 @@ class AdminComponent {
                     items[idx] = temp;
                     await coluaRepo.reorderTopNavItems(items.map(i => i.id));
                     window.navbarComponent?.refresh();
+                    window.sidebarComponent?.refresh();
                     await this.loadTabContent();
                 }
             });
@@ -951,6 +986,7 @@ class AdminComponent {
                     items[idx] = temp;
                     await coluaRepo.reorderTopNavItems(items.map(i => i.id));
                     window.navbarComponent?.refresh();
+                    window.sidebarComponent?.refresh();
                     await this.loadTabContent();
                 }
             });
@@ -970,6 +1006,7 @@ class AdminComponent {
             if (confirm.isConfirmed) {
                 await coluaRepo.resetTopNavToDefaults();
                 window.navbarComponent?.refresh();
+                window.sidebarComponent?.refresh();
                 Swal.fire({
                     title: "¡Menú Restablecido!",
                     icon: "success",
@@ -1196,12 +1233,14 @@ class AdminComponent {
                 orderIndex: parseInt(document.getElementById('sec-order').value) || 1,
                 isEnabled: document.getElementById('sec-enabled').checked,
                 isVisible: document.getElementById('sec-enabled').checked,
-                isDraft: true,
-                isPublished: false,
+                isDraft: false,
+                isPublished: true,
                 lastModified: Date.now()
             };
 
             await coluaRepo.saveSection(updated);
+            window.navbarComponent?.refresh();
+            window.sidebarComponent?.refresh();
             await coluaRepo.logAudit({
                 action: isNew ? 'CREAR_SECCION' : 'EDITAR_SECCION',
                 performedBy: 'Super Administrador',
@@ -1210,10 +1249,10 @@ class AdminComponent {
 
             app.closeModal();
             Swal.fire({
-                title: "¡Sección Guardada!",
-                text: `La sección "${updated.title}" ha sido guardada en borrador para publicación.`,
+                title: isNew ? "¡Sección Creada y Publicada!" : "¡Sección Actualizada y Publicada!",
+                text: `La sección "${updated.title}" ha sido guardada y publicada en línea con éxito.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -1309,13 +1348,14 @@ class AdminComponent {
 
             await coluaRepo.saveTopNavItem(itemToSave);
             window.navbarComponent?.refresh();
+            window.sidebarComponent?.refresh();
             app.closeModal();
 
             Swal.fire({
-                title: isNew ? "¡Botón Creado!" : "¡Botón Actualizado!",
-                text: `El botón "${labelVal}" ha sido configurado en el menú superior.`,
+                title: isNew ? "¡Botón Creado y Publicado!" : "¡Botón Actualizado y Publicado!",
+                text: `El botón "${labelVal}" ha sido guardado y publicado en línea en la barra superior.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -1403,13 +1443,14 @@ class AdminComponent {
             }
 
             window.navbarComponent?.refresh();
+            window.sidebarComponent?.refresh();
             app.closeModal();
 
             Swal.fire({
-                title: isNew ? "¡Sub-botón Agregado!" : "¡Sub-botón Actualizado!",
-                text: `La sub-opción "${labelVal}" se ha guardado en el menú desplegable.`,
+                title: isNew ? "¡Sub-botón Agregado y Publicado!" : "¡Sub-botón Actualizado y Publicado!",
+                text: `La sub-opción "${labelVal}" ha sido guardada y publicada en línea en el menú desplegable.`,
                 icon: "success",
-                timer: 1500,
+                timer: 1600,
                 showConfirmButton: false,
                 draggable: true
             });
@@ -1507,6 +1548,7 @@ class AdminComponent {
                                         <th style="padding: 10px 14px; font-weight: 700;">Fecha / Hora</th>
                                         <th style="padding: 10px 14px; font-weight: 700;">Solicitante</th>
                                         <th style="padding: 10px 14px; font-weight: 700;">Contacto Directo</th>
+                                        <th style="padding: 10px 14px; font-weight: 700; text-align: center;">Fotos DPI</th>
                                         <th style="padding: 10px 14px; font-weight: 700;">Agencia / Pago</th>
                                         <th style="padding: 10px 14px; font-weight: 700;">Estado</th>
                                         <th style="padding: 10px 14px; font-weight: 700; text-align: center;">Acciones</th>
@@ -1518,6 +1560,9 @@ class AdminComponent {
                                         const waPhone = cleanPhone.startsWith('502') ? cleanPhone : '502' + cleanPhone;
                                         const waText = encodeURIComponent(`Hola ${lead.nombre}, te saludamos de COLUA MICOOPE respecto a tu solicitud de afiliación cooperativa en línea. ¿En qué momento podemos coordinar tus requisitos y aportación inicial?`);
                                         const waLink = `https://wa.me/${waPhone}?text=${waText}`;
+
+                                        const frente = lead.fotoDpiFrente || (lead.respuestas && (lead.respuestas['Foto de tu DPI - Frente (Anverso)'] || lead.respuestas['Foto de tu DPI (Ambos lados)'])) || '';
+                                        const reverso = lead.fotoDpiReverso || (lead.respuestas && lead.respuestas['Foto de tu DPI - Atrás (Reverso)']) || '';
 
                                         const statusBg = lead.estado === 'Afiliado / Coordinado' || lead.estado === 'Afiliado' 
                                             ? '#dcfce7; color: #15803d; border-color: #86efac;' 
@@ -1548,6 +1593,23 @@ class AdminComponent {
                                                     </div>
                                                     <a href="mailto:${lead.email}" style="font-size: 0.78rem; color: var(--colua-navy); text-decoration: none;">${lead.email}</a>
                                                 </td>
+                                                <!-- Ojito para Fotos DPI -->
+                                                <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
+                                                    ${(frente || reverso) ? `
+                                                        <div style="display: inline-flex; gap: 6px; justify-content: center; align-items: center;">
+                                                            ${frente ? `
+                                                                <button type="button" class="btn-form-lead-eye" data-id="${lead.id}" data-type="frente" style="background: #eff6ff; border: 1.5px solid #2563eb; color: #1e40af; border-radius: 6px; padding: 4px 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(37,99,235,0.08); transition: all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'" title="Ver foto de DPI Anverso (Frente)">
+                                                                    <span>👁️ Frente</span>
+                                                                </button>
+                                                            ` : ''}
+                                                            ${reverso ? `
+                                                                <button type="button" class="btn-form-lead-eye" data-id="${lead.id}" data-type="reverso" style="background: #f0fdf4; border: 1.5px solid #16a34a; color: #15803d; border-radius: 6px; padding: 4px 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(22,163,74,0.08); transition: all 0.15s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'" title="Ver foto de DPI Reverso (Atrás)">
+                                                                    <span>👁️ Reverso</span>
+                                                                </button>
+                                                            ` : ''}
+                                                        </div>
+                                                    ` : `<span style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">— Sin foto —</span>`}
+                                                </td>
                                                 <td style="padding: 12px 14px;">
                                                     <div style="font-weight: 600; color: #1e293b;">${lead.agenciaPreferida || 'Central'}</div>
                                                     <div style="font-size: 0.75rem; color: #64748b;">${lead.metodoPago || 'Efectivo / Agencia'}</div>
@@ -1563,7 +1625,7 @@ class AdminComponent {
                                                 <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
                                                     <div style="display: inline-flex; gap: 6px;">
                                                         <button class="btn btn-outline btn-lead-detail" data-id="${lead.id}" style="padding: 5px 8px; font-size: 0.76rem; color: var(--colua-navy);" title="Ver Detalle Completo">
-                                                            🔍 Detalle
+                                                             Detalle
                                                         </button>
                                                         <button class="btn btn-outline btn-lead-delete" data-id="${lead.id}" style="padding: 5px 8px; font-size: 0.76rem; color: #ef4444; border-color: #fca5a5;" title="Eliminar Solicitud">
                                                             🗑️
@@ -1653,6 +1715,25 @@ class AdminComponent {
             btn.addEventListener('click', () => {
                 const lead = leads.find(l => l.id === btn.dataset.id);
                 if (lead) this.showLeadDetailModal(lead);
+            });
+        });
+
+        // Eventos: Ojito para ver fotos DPI desde Formularios
+        container.querySelectorAll('.btn-form-lead-eye').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const lead = leads.find(l => String(l.id) === String(btn.dataset.id));
+                if (!lead) return;
+                const frente = lead.fotoDpiFrente || (lead.respuestas && (lead.respuestas['Foto de tu DPI - Frente (Anverso)'] || lead.respuestas['Foto de tu DPI (Ambos lados)'])) || '';
+                const reverso = lead.fotoDpiReverso || (lead.respuestas && lead.respuestas['Foto de tu DPI - Atrás (Reverso)']) || '';
+                const isFrente = btn.dataset.type === 'frente';
+                const photo = isFrente ? frente : reverso;
+                const title = isFrente ? `DPI Anverso (Frente) - ${lead.nombre}` : `DPI Reverso (Atrás) - ${lead.nombre}`;
+                if (photo) {
+                    this.previewDocImage(photo, title);
+                } else {
+                    app.showToast('No se encontró la foto para esta solicitud', 'warning');
+                }
             });
         });
 
@@ -1780,17 +1861,17 @@ class AdminComponent {
                         <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 4px;">
                             <strong style="color: var(--colua-navy); display: block; margin-bottom: 8px;">Respuestas y Documentos Recibidos:</strong>
                             <div style="display: flex; flex-direction: column; gap: 8px;">
-                                ${Object.entries(lead.respuestas).map(([label, val]) => {
-                                    const isImg = typeof val === 'string' && val.startsWith('data:image');
+                                ${Object.entries(lead.respuestas).map(([label, val], idx) => {
+                                    const isImg = typeof val === 'string' && (val.startsWith('data:image') || val.startsWith('data:application/pdf') || val.startsWith('<svg'));
                                     return `
                                         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
                                             <div style="font-weight: 700; font-size: 0.78rem; color: #475569; margin-bottom: 2px;">${label}</div>
                                             ${isImg ? `
                                                 <div style="margin-top: 6px;">
-                                                    <a href="${val}" target="_blank" title="Clic para ampliar foto" style="display: inline-block;">
-                                                        <img src="${val}" alt="${label}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid #cbd5e1; object-fit: contain; cursor: zoom-in;" />
-                                                    </a>
-                                                    <span style="display: block; font-size: 0.7rem; color: #0284c7; margin-top: 2px;">(Clic en la foto para ver en tamaño completo)</span>
+                                                    <button type="button" class="btn-lead-detail-doc-eye" data-idx="${idx}" style="background: #eff6ff; border: 1.5px solid #2563eb; color: #1e40af; border-radius: 6px; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(37,99,235,0.08); transition: all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+                                                        <span style="font-size: 1rem;">👁️</span>
+                                                        <span>Ver Foto Adjunta</span>
+                                                    </button>
                                                 </div>
                                             ` : `
                                                 <div style="font-size: 0.85rem; color: #0f172a;">${val || 'No especificado'}</div>
@@ -1812,6 +1893,20 @@ class AdminComponent {
             </div>
         `;
         app.showModal(modalHtml);
+
+        const modalContainer = document.getElementById('modal-inner-content');
+        if (modalContainer && lead.respuestas) {
+            const respEntries = Object.entries(lead.respuestas);
+            modalContainer.querySelectorAll('.btn-lead-detail-doc-eye').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    if (!isNaN(idx) && respEntries[idx]) {
+                        const [label, val] = respEntries[idx];
+                        this.previewDocImage(val, `${label} - ${lead.nombre}`);
+                    }
+                });
+            });
+        }
     }
 
     showEditFormModal(form = null) {
@@ -2277,9 +2372,9 @@ class AdminComponent {
                                             <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
                                             ${item.isEnabled !== false && item.isVisible !== false ? 'Visible' : 'Oculto'}
                                         </span>
-                                        <span class="badge" style="background: ${item.isDraft !== false ? '#fffbeb' : '#dcfce7'}; color: ${item.isDraft !== false ? '#b45309' : '#15803d'}; font-size: 0.74rem; font-weight: 700; border: 1px solid ${item.isDraft !== false ? '#fef3c7' : '#bbf7d0'}; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span class="badge" style="background: ${item.isDraft === true ? '#fffbeb' : '#dcfce7'}; color: ${item.isDraft === true ? '#b45309' : '#15803d'}; font-size: 0.74rem; font-weight: 700; border: 1px solid ${item.isDraft === true ? '#fef3c7' : '#bbf7d0'}; display: inline-flex; align-items: center; gap: 4px;">
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"></circle></svg>
-                                            ${item.isDraft !== false ? 'Borrador' : 'Publicado'}
+                                            ${item.isDraft === true ? 'Borrador' : 'Publicado en Línea'}
                                         </span>
                                         ${item.buttonText ? `
                                             <span class="badge" style="background: rgba(23, 55, 137, 0.08); color: var(--colua-navy); font-size: 0.74rem; font-weight: 600;">
@@ -2548,84 +2643,443 @@ class AdminComponent {
                 iconBg: '#eff6ff',
                 iconColor: '#1d4ed8',
                 iconSvg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>`
+            },
+            {
+                id: 'job_vacancy',
+                title: 'Plaza Vacante / Empleo',
+                badge: 'EMPLEO',
+                subtitle: 'Convocatorias laborales, requisitos, habilidades y recepción de CV',
+                category: 'job',
+                iconBg: '#fef3c7',
+                iconColor: '#b45309',
+                iconSvg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`
             }
         ];
 
-        const modalHtml = `
-            <div style="max-width: 500px; width: 100%; padding: 4px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-right: 36px;">
-                    <div style="display: inline-flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 700; color: var(--colua-navy); background: rgba(23, 55, 137, 0.08); padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;">COLUA CANVAS CMS</span>
-                        <span style="font-size: 0.72rem; color: var(--colua-gray-500); font-weight: 600;">v2.4</span>
-                    </div>
-                </div>
-
-                <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 4px 0;">
-                    Seleccionar Tipo de Elemento
-                </h3>
-                <p style="font-size: 0.84rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.4;">
-                    Elige el tipo de bloque para configurar sus propiedades en el canvas:
-                </p>
-
-                <!-- Buscador de componentes en tiempo real -->
-                <div style="position: relative; margin-bottom: 14px;">
-                    <input type="text" id="elem-type-search-input" placeholder="Buscar bloque o componente..."
-                        style="width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid var(--colua-gray-200); border-radius: 10px; font-size: 0.88rem; outline: none; background: white;" />
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
-                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                </div>
-
-                <!-- Filtros por Categoría -->
-                <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;" id="elem-type-pill-filters">
-                    <button class="elem-filter-pill active" data-cat="all" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #0f172a; background: #0f172a; color: white; cursor: pointer; white-space: nowrap;">Todos</button>
-                    <button class="elem-filter-pill" data-cat="interaction" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Formularios</button>
-                    <button class="elem-filter-pill" data-cat="basic" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Básicos</button>
-                    <button class="elem-filter-pill" data-cat="media" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Multimedia</button>
-                    <button class="elem-filter-pill" data-cat="structure" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Estructura</button>
-                    <button class="elem-filter-pill" data-cat="financial" style="padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Financiero</button>
-                </div>
-
-                <!-- Lista de Tipos de Elementos -->
-                <div id="element-types-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding-right: 4px;">
-                    ${types.map(t => `
-                        <div class="elem-type-card-item" data-id="${t.id}" data-cat="${t.category}" data-title="${t.title.toLowerCase()}" data-sub="${t.subtitle.toLowerCase()}"
-                            style="border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; background: white; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s ease;">
-                            <div style="display: flex; align-items: center; gap: 14px;">
-                                <div style="width: 44px; height: 44px; border-radius: 12px; background: ${t.iconBg}; color: ${t.iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    ${t.iconSvg}
+        // Mockups visuales fieles de cómo se ve cada componente en la pantalla real
+        const previewsMap = {
+            'job_vacancy': {
+                label: 'Plaza Vacante / Convocatoria Laboral',
+                badge: 'BOLSA DE EMPLEO',
+                recommendation: '¿Cuándo usarlo? Para publicar plazas de empleo con puesto, sede, requisitos, habilidades, beneficios y recepción de CV (idéntico a los afiches oficiales de COLUA).',
+                html: `
+                    <div style="background: white; border: 1.5px solid #cbd5e1; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.05);">
+                        <div style="display: grid; grid-template-columns: 125px 1fr;">
+                            <div style="background: linear-gradient(180deg, #173789 0%, #0c2054 100%); color: white; padding: 14px 10px; display: flex; flex-direction: column; justify-content: space-between; text-align: center;">
+                                <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 6px; margin-bottom: 6px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" style="margin: 0 auto 3px auto; display: block;"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                                    <span style="font-size: 0.6rem; font-weight: 800; letter-spacing: 0.5px; color: #93c5fd; display: block;">PLAZA VACANTE</span>
                                 </div>
-                                <div style="text-align: left;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <strong style="font-size: 0.95rem; color: #0f172a;">${t.title}</strong>
-                                        ${t.badge ? `<span style="font-size: 0.65rem; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">${t.badge}</span>` : ''}
-                                    </div>
-                                    <span style="font-size: 0.78rem; color: #64748b; display: block; margin-top: 2px;">${t.subtitle}</span>
+                                <div style="margin: auto 0;">
+                                    <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 30px; height: 30px; object-fit: contain; margin: 0 auto 3px auto;" onerror="this.src='assets/logo_colua.png'" />
+                                    <span style="font-size: 0.58rem; color: #cbd5e1; font-weight: 700; display: block;">COLUA MICOOPE</span>
+                                </div>
+                                <div style="font-size: 0.55rem; color: #fde047; font-weight: 700; border-top: 1px dashed rgba(255,255,255,0.25); padding-top: 4px;">
+                                    Límite: 17/09/2026
                                 </div>
                             </div>
-                            <span style="color: #94a3b8; font-size: 1.2rem; font-weight: 600;">›</span>
+                            <div style="padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <span style="font-size: 0.62rem; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 4px;">📍 Sede: Administración, San Juan Argueta</span>
+                                    <h4 style="font-size: 0.95rem; font-weight: 800; color: #c2410c; margin: 0 0 6px 0; line-height: 1.25;">COORDINADOR DE COMPENSACIÓN FIJA Y VARIABLE</h4>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px;">
+                                            <strong style="font-size: 0.65rem; color: #1e293b; display: block; margin-bottom: 2px;">📌 Requisitos:</strong>
+                                            <div style="font-size: 0.62rem; color: #475569; line-height: 1.25;">• Cierre de pensum en CPA/Admón.<br/>• Experiencia mínima 2 años.<br/>• Disponibilidad de horario.</div>
+                                        </div>
+                                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px;">
+                                            <strong style="font-size: 0.65rem; color: #166534; display: block; margin-bottom: 2px;">💼 Ofrecemos:</strong>
+                                            <div style="font-size: 0.62rem; color: #14532d; line-height: 1.25;">• Salario competitivo.<br/>• Estabilidad laboral.<br/>• Seguro de vida y médico.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.68rem; color: #1d4ed8; font-weight: 700;">✉️ talentoh@coluarl.com.gt</span>
+                                    <span style="font-size: 0.65rem; background: var(--colua-navy); color: white; padding: 3px 8px; border-radius: 4px; font-weight: 700;">Enviar CV</span>
+                                </div>
+                            </div>
                         </div>
-                    `).join('')}
+                    </div>
+                `
+            },
+            'strategic_axis': {
+                label: 'Eje Estratégico / Programa Completo',
+                badge: 'ESTRUCTURA DESTACADA',
+                recommendation: '¿Cuándo usarlo? Ideal para programas comunitarios, convocatorias o proyectos amplios que contienen varias sub-iniciativas (como en la sección Sostenibilidad).',
+                html: `
+                    <div style="border: 1.5px solid #ddd6fe; border-radius: 14px; overflow: hidden; background: #ffffff; box-shadow: 0 6px 18px rgba(99, 102, 241, 0.08); max-width: 100%; transition: all 0.2s;">
+                        <div style="display: grid; grid-template-columns: 140px 1fr; background: white;">
+                            <div style="background: #0f172a; height: 100%; min-height: 210px; overflow: hidden; position: relative;">
+                                <img src="assets/noticia_taller_finanzas.jpg" alt="Eje Estratégico" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/programa_wachalal.png'" />
+                                <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(15,23,42,0.75); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.62rem; font-weight: 700;">FOTO LATERAL</div>
+                            </div>
+                            <div style="padding: 14px 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <span style="font-size: 0.68rem; font-weight: 800; color: #634794; text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 2px;">EJE ESTRATÉGICO 01</span>
+                                    <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; line-height: 1.25;">Educación y Formación Cooperativa</h4>
+                                    <p style="font-size: 0.76rem; color: #475569; margin: 0 0 10px 0; line-height: 1.4;">Fortalecemos las capacidades individuales y colectivas mediante la educación financiera.</p>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 20px; height: 20px; border-radius: 6px; background: #ede9fe; color: #634794; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.7rem; font-weight: 800;">✓</div>
+                                        <div style="font-size: 0.68rem; color: #1e293b; line-height: 1.2;"><strong>Ed. Financiera:</strong> Finanzas familiares</div>
+                                    </div>
+                                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 20px; height: 20px; border-radius: 6px; background: #ede9fe; color: #634794; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.7rem; font-weight: 800;">✓</div>
+                                        <div style="font-size: 0.68rem; color: #1e293b; line-height: 1.2;"><strong>Becas Jóvenes:</strong> Ayuda escolar</div>
+                                    </div>
+                                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 20px; height: 20px; border-radius: 6px; background: #ede9fe; color: #634794; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.7rem; font-weight: 800;">✓</div>
+                                        <div style="font-size: 0.68rem; color: #1e293b; line-height: 1.2;"><strong>Prog. Huellas:</strong> Hábitos de ahorro</div>
+                                    </div>
+                                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; display: flex; align-items: center; gap: 6px;">
+                                        <div style="width: 20px; height: 20px; border-radius: 6px; background: #ede9fe; color: #634794; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.7rem; font-weight: 800;">✓</div>
+                                        <div style="font-size: 0.68rem; color: #1e293b; line-height: 1.2;"><strong>Wachalal:</strong> Valores cooperativos</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            'card': {
+                label: 'Tarjeta de Contenido / Información',
+                badge: 'ESTÁNDAR',
+                recommendation: '¿Cuándo usarlo? Para vacantes de empleo (como "Puesto Cajero General"), servicios o fichas informativas con título, requisitos en azul y botón de acción.',
+                html: `
+                    <div style="max-width: 280px; margin: 0 auto; background: white; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.05); text-align: center;">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 10px auto; border-radius: 12px; background: rgba(23, 55, 137, 0.08); display: flex; align-items: center; justify-content: center;">
+                            <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 28px; height: 28px; object-fit: contain;" />
+                        </div>
+                        <h4 style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0 0 4px 0;">Puesto Cajero General Agencia Joyabaj</h4>
+                        <span style="font-size: 0.76rem; font-weight: 700; color: #2563eb; display: block; margin-bottom: 8px;">dpi, curriculum</span>
+                        <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 14px 0; line-height: 1.45;">Forma parte del equipo de COLUA en nuestras agencias departamentales.</p>
+                        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 9px; font-size: 0.8rem; font-weight: 700; color: #173789; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <span>Ver Más Información</span>
+                        </div>
+                    </div>
+                `
+            },
+            'financial_product': {
+                label: 'Tarjeta de Producto Financiero',
+                badge: 'PRODUCTO COLUA',
+                recommendation: '¿Cuándo usarlo? Para cuentas de ahorro, líneas de crédito, tarjetas de débito o seguros con especificaciones financieras.',
+                html: `
+                    <div style="max-width: 280px; margin: 0 auto; background: white; border: 1.5px solid #bbf7d0; border-radius: 14px; padding: 18px 16px; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.08); text-align: center;">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 10px auto; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; display: flex; align-items: center; justify-content: center;">
+                            <img src="assets/ahorros.png" alt="Ahorro" style="width: 28px; height: 28px; object-fit: contain;" onerror="this.src='assets/distintivo_colua.png'" />
+                        </div>
+                        <span style="font-size: 0.65rem; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 4px;">PRODUCTO COOPERATIVO</span>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0 0 4px 0;">Crédito Productivo y Agrícola</h4>
+                        <span style="font-size: 0.76rem; font-weight: 700; color: #16a34a; display: block; margin-bottom: 8px;">Tasa preferencial • Hasta Q250,000</span>
+                        <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 14px 0; line-height: 1.45;">Financiamiento ágil para capital de trabajo, cosechas o equipamiento técnico.</p>
+                        <div style="background: var(--colua-navy); color: white; border-radius: 8px; padding: 9px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span>Solicitar Apertura (PBX)</span>
+                        </div>
+                    </div>
+                `
+            },
+            'benefit_list': {
+                label: 'Lista de Beneficios / Requisitos',
+                badge: 'CHECKLIST',
+                recommendation: '¿Cuándo usarlo? Para listar requisitos de afiliación, documentos para solicitar un empleo o condiciones de un trámite.',
+                html: `
+                    <div style="background: #ffffff; border: 1.5px solid #fbcfe8; border-radius: 14px; padding: 16px; box-shadow: 0 4px 14px rgba(219, 39, 119, 0.06);">
+                        <span style="font-size: 0.68rem; font-weight: 800; color: #9d174d; background: #fce7f3; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;">CHECKLIST OFICIAL</span>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0 0 10px 0;">Requisitos para Asociarte a COLUA</h4>
+                        <div style="display: flex; flex-direction: column; gap: 7px;">
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #334155; background: #fdf2f8; padding: 7px 12px; border-radius: 8px; border: 1px solid #fce7f3;">
+                                <span style="color: #db2777; font-weight: 800; font-size: 0.95rem;">✓</span>
+                                <span>DPI original o copia legible (o Certificado de Nacimiento)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #334155; background: #fdf2f8; padding: 7px 12px; border-radius: 8px; border: 1px solid #fce7f3;">
+                                <span style="color: #db2777; font-weight: 800; font-size: 0.95rem;">✓</span>
+                                <span>Recibo reciente de energía eléctrica, agua o teléfono</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #334155; background: #fdf2f8; padding: 7px 12px; border-radius: 8px; border: 1px solid #fce7f3;">
+                                <span style="color: #db2777; font-weight: 800; font-size: 0.95rem;">✓</span>
+                                <span>Aportación inicial mínima de Q 100.00</span>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            'pdf_document': {
+                label: 'Documento Oficial en PDF',
+                badge: 'FORMATO PDF',
+                recommendation: '¿Cuándo usarlo? Para memorias de labores, reglamentos, contratos o estados financieros para ver o descargar.',
+                html: `
+                    <div style="border-top: 4px solid #dc2626; border-radius: 12px; border: 1.5px solid #fecaca; border-top-width: 4px; background: white; padding: 16px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.68rem; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.4px;">📄 DOCUMENTO OFICIAL</span>
+                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">PDF • 2.4 MB</span>
+                        </div>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0 0 6px 0;">Reglamento Oficial de Ahorro y Crédito</h4>
+                        <p style="font-size: 0.78rem; color: #64748b; margin: 0 0 14px 0; line-height: 1.45;">Normativa aprobada en Asamblea General de Asociados disponible para consulta en vivo o descarga.</p>
+                        <div style="background: #dc2626; color: white; border-radius: 8px; padding: 9px; font-size: 0.82rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(220,38,38,0.25);">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <span>Ver Documento PDF ↗</span>
+                        </div>
+                    </div>
+                `
+            },
+            'form_lead': {
+                label: 'Formulario Interactivo / Consultas',
+                badge: 'FORMULARIO',
+                recommendation: '¿Cuándo usarlo? Para captar datos de clientes, solicitudes de empleo, dudas de asociados o formularios de contacto.',
+                html: `
+                    <div style="background: white; border: 1.5px solid #bfdbfe; border-radius: 14px; padding: 16px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(23, 55, 137, 0.08); display: flex; align-items: center; justify-content: center;">
+                                <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 22px; height: 22px; object-fit: contain;" />
+                            </div>
+                            <div>
+                                <span style="font-size: 0.65rem; font-weight: 700; color: var(--colua-navy); background: rgba(23, 55, 137, 0.08); padding: 2px 6px; border-radius: 4px;">FORMULARIO INTERACTIVO</span>
+                                <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--colua-navy); margin: 2px 0 0 0;">Formulario de Solicitudes y Consultas</h4>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 10px; font-size: 0.74rem; color: #64748b;">👤 Nombre y Apellido...</div>
+                            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 10px; font-size: 0.74rem; color: #64748b;">📱 Teléfono / WhatsApp...</div>
+                        </div>
+                        <div style="background: var(--colua-navy); color: white; border-radius: 8px; padding: 9px; font-size: 0.8rem; font-weight: 700; text-align: center;">
+                            Enviar Respuestas al Asesor
+                        </div>
+                    </div>
+                `
+            },
+            'banner': {
+                label: 'Banner Promocional / Alerta',
+                badge: 'ANCHO COMPLETO',
+                recommendation: '¿Cuándo usarlo? Para avisos importantes, convocatorias de asamblea o llamadas a la acción que destacan en toda la página.',
+                html: `
+                    <div style="background: linear-gradient(135deg, #173789 0%, #0c2054 100%); color: white; border-radius: 14px; padding: 18px; box-shadow: 0 8px 20px rgba(23,55,137,0.2);">
+                        <span style="font-size: 0.68rem; font-weight: 800; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 4px;">PARTICIPACIÓN Y ASISTENCIA</span>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; margin: 0 0 6px 0; line-height: 1.3;">¿Deseas vincular a tu comunidad o escuela?</h4>
+                        <p style="font-size: 0.76rem; color: #bfdbfe; margin: 0 0 12px 0; line-height: 1.45;">Comunícate a nuestro PBX central o visita tu agencia COLUA más cercana para conocer fechas.</p>
+                        <div style="display: inline-flex; align-items: center; gap: 6px; background: #ffffff; color: #173789; font-weight: 800; font-size: 0.78rem; padding: 7px 14px; border-radius: 8px;">
+                            <span>PBX: 7795-7795</span>
+                        </div>
+                    </div>
+                `
+            },
+            'text': {
+                label: 'Bloque de Texto Informativo',
+                badge: 'EDITORIAL',
+                recommendation: '¿Cuándo usarlo? Para párrafos institucionales, declaraciones de misión/visión o historias cooperativas.',
+                html: `
+                    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 6px 0;">Somos el lado humano de las finanzas</h3>
+                        <p style="font-size: 0.82rem; color: #475569; line-height: 1.55; margin: 0;">Más de 50 años construyendo desarrollo socioeconómico, confianza y bienestar integral para las comunidades y familias del altiplano de Guatemala.</p>
+                    </div>
+                `
+            },
+            'image': {
+                label: 'Imagen Institucional',
+                badge: 'MULTIMEDIA',
+                recommendation: '¿Cuándo usarlo? Para fotos de eventos, agencias, colaboradores o infografías ilustradas.',
+                html: `
+                    <div style="border-radius: 12px; overflow: hidden; border: 1.5px solid #e2e8f0; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                        <img src="assets/nosotros_edificio_equipo.jpg" alt="Edificio COLUA" style="width: 100%; height: 140px; object-fit: cover; display: block;" onerror="this.src='assets/colua_edificio.png'" />
+                        <div style="padding: 10px 12px;">
+                            <span style="font-size: 0.78rem; font-weight: 700; color: #0f172a; display: block;">Fotografía Institucional</span>
+                            <span style="font-size: 0.72rem; color: #64748b;">Edificio Central y Equipo Humano</span>
+                        </div>
+                    </div>
+                `
+            },
+            'button': {
+                label: 'Botón de Acción Directa',
+                badge: 'INTERACCIÓN',
+                recommendation: '¿Cuándo usarlo? Para enlaces a WhatsApp, llamadas directas al PBX o navegación entre secciones.',
+                html: `
+                    <div style="text-align: center; padding: 20px 14px; background: white; border: 1.5px solid #e2e8f0; border-radius: 12px;">
+                        <span style="font-size: 0.72rem; color: #64748b; display: block; margin-bottom: 8px;">Botón Destacado de Acción</span>
+                        <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--colua-navy); color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 0.85rem;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            <span>Llamar a PBX: 7795-7795</span>
+                        </div>
+                    </div>
+                `
+            },
+            'icon': {
+                label: 'Ícono Vectorial Destacado',
+                badge: 'ÍCONO',
+                recommendation: '¿Cuándo usarlo? Para pictogramas temáticos con estilo y títulos cortos.',
+                html: `
+                    <div style="text-align: center; padding: 20px 14px; background: white; border: 1.5px solid #e2e8f0; border-radius: 12px;">
+                        <div style="width: 52px; height: 52px; margin: 0 auto 10px auto; border-radius: 50%; background: #f5f3ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            🏛️
+                        </div>
+                        <h4 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0 0 4px 0;">Solidez y Confianza</h4>
+                        <p style="font-size: 0.76rem; color: #64748b; margin: 0;">Más de medio siglo de respaldo solidario.</p>
+                    </div>
+                `
+            }
+        };
+
+        let currentActiveTypeId = 'strategic_axis';
+
+        const modalHtml = `
+            <div style="max-width: 960px; width: 100%; padding: 4px;">
+                <!-- Encabezado con badge y cierre -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span class="badge" style="background: var(--colua-navy); color: white; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.4px;">COLUA CANVAS CMS • SELECTOR VISUAL</span>
+                            <span style="font-size: 0.72rem; color: #16a34a; font-weight: 700; background: #dcfce7; padding: 2px 7px; border-radius: 4px;">👁️ VISTA PREVIA EN PANTALLA REAL</span>
+                        </div>
+                        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--colua-navy); margin: 0;">
+                            ¿Qué tipo de elemento deseas agregar?
+                        </h2>
+                        <p style="font-size: 0.84rem; color: #64748b; margin: 4px 0 0 0;">
+                            Pasa el cursor o haz clic en cualquier tipo para ver <strong>exactamente cómo se verá en la pantalla</strong> y elegir el que más te convenga.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 6px 12px; font-size: 0.82rem; border-radius: 8px;">✕ Cancelar</button>
                 </div>
 
-                <div style="margin-top: 16px; border-top: 1px solid var(--colua-gray-200); padding-top: 12px; text-align: center;">
-                    <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="width: 100%; padding: 10px; border-radius: 10px; font-weight: 600; font-size: 0.88rem; background: #f8fafc;">
-                        Cancelar
-                    </button>
+                <!-- Layout en 2 Columnas: Lista a la izquierda + Mockup en Pantalla a la derecha -->
+                <div style="display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start;" id="elem-selector-split-layout">
+                    <!-- Columna 1: Filtros y Lista de Tipos -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Buscador de componentes -->
+                        <div style="position: relative;">
+                            <input type="text" id="elem-type-search-input" placeholder="Buscar tipo o componente..."
+                                style="width: 100%; padding: 9px 12px 9px 34px; border: 1.5px solid var(--colua-gray-200); border-radius: 10px; font-size: 0.86rem; outline: none; background: white;" />
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%);">
+                                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+
+                        <!-- Filtros por Categoría -->
+                        <div style="display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px;" id="elem-type-pill-filters">
+                            <button class="elem-filter-pill active" data-cat="all" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 700; border: 1.5px solid #0f172a; background: #0f172a; color: white; cursor: pointer; white-space: nowrap;">Todos</button>
+                            <button class="elem-filter-pill" data-cat="job" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">💼 Plazas & Empleo</button>
+                            <button class="elem-filter-pill" data-cat="financial" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Ejes & Productos</button>
+                            <button class="elem-filter-pill" data-cat="structure" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Tarjetas & Listas</button>
+                            <button class="elem-filter-pill" data-cat="media" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">PDF & Media</button>
+                            <button class="elem-filter-pill" data-cat="interaction" style="padding: 5px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; white-space: nowrap;">Formularios</button>
+                        </div>
+
+                        <!-- Lista de Tipos de Elementos -->
+                        <div id="element-types-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 48vh; overflow-y: auto; padding-right: 4px;">
+                            ${types.map(t => {
+                                const isCurrent = t.id === currentActiveTypeId;
+                                return `
+                                    <div class="elem-type-card-item ${isCurrent ? 'active' : ''}" data-id="${t.id}" data-cat="${t.category}" data-title="${t.title.toLowerCase()}" data-sub="${t.subtitle.toLowerCase()}"
+                                        style="border: 1.5px solid ${isCurrent ? 'var(--colua-navy)' : '#e2e8f0'}; border-radius: 12px; padding: 10px 12px; background: ${isCurrent ? '#f0f7ff' : 'white'}; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.18s ease;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="width: 40px; height: 40px; border-radius: 10px; background: ${t.iconBg}; color: ${t.iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                ${t.iconSvg}
+                                            </div>
+                                            <div style="text-align: left;">
+                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                    <strong style="font-size: 0.9rem; color: #0f172a;">${t.title}</strong>
+                                                    ${t.badge ? `<span style="font-size: 0.62rem; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 1px 5px; border-radius: 4px;">${t.badge}</span>` : ''}
+                                                </div>
+                                                <span style="font-size: 0.75rem; color: #64748b; display: block; margin-top: 1px; line-height: 1.3;">${t.subtitle}</span>
+                                            </div>
+                                        </div>
+                                        <span style="color: ${isCurrent ? 'var(--colua-navy)' : '#cbd5e1'}; font-size: 1.1rem; font-weight: 700;">›</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Simulador / Marco de Vista Previa Real en Pantalla -->
+                    <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-height: 460px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <!-- Barra superior simulada de ventana de navegador -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                                <span style="font-size: 0.72rem; font-weight: 800; color: #334155; margin-left: 6px; letter-spacing: 0.4px;" id="preview-component-label">
+                                    VISTA PREVIA EN PANTALLA
+                                </span>
+                            </div>
+                            <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; font-weight: 700;" id="preview-component-badge">
+                                ASÍ SE VERÁ EN TU WEB
+                            </span>
+                        </div>
+
+                        <!-- Canvas donde se renderiza el componente real -->
+                        <div id="element-live-preview-box" style="flex: 1; display: flex; flex-direction: column; justify-content: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); min-height: 270px;">
+                            ${previewsMap[currentActiveTypeId]?.html || ''}
+                        </div>
+
+                        <!-- Panel inferior: Recomendación y Botón de Uso -->
+                        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.74rem; font-weight: 700; color: var(--colua-navy); display: block;" id="preview-recommendation-title">
+                                    ${previewsMap[currentActiveTypeId]?.label || 'Tipo Seleccionado'}
+                                </span>
+                                <span style="font-size: 0.76rem; color: #64748b; line-height: 1.35; display: block; margin-top: 2px;" id="preview-recommendation-desc">
+                                    ${previewsMap[currentActiveTypeId]?.recommendation || ''}
+                                </span>
+                            </div>
+                            <button type="button" id="btn-use-selected-type" class="btn btn-primary" style="padding: 10px 18px; font-weight: 700; font-size: 0.88rem; background: var(--colua-navy); border-radius: 8px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <span>Configurar este Tipo</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
 
         app.showModal(modalHtml);
 
+        // Ajustar el modal de App para soportar ancho generoso en desktop
+        const modalCard = document.querySelector('.modal-card');
+        if (modalCard) {
+            modalCard.style.maxWidth = '960px';
+            modalCard.style.width = '95vw';
+        }
+
         const container = document.getElementById('element-types-container');
         const searchInput = document.getElementById('elem-type-search-input');
         const filterPills = document.querySelectorAll('.elem-filter-pill');
-        let activeCat = 'all';
+        const previewBox = document.getElementById('element-live-preview-box');
+        const previewLabel = document.getElementById('preview-component-label');
+        const previewBadge = document.getElementById('preview-component-badge');
+        const previewRecTitle = document.getElementById('preview-recommendation-title');
+        const previewRecDesc = document.getElementById('preview-recommendation-desc');
+        const useBtn = document.getElementById('btn-use-selected-type');
 
+        const updatePreview = (typeId) => {
+            currentActiveTypeId = typeId;
+            const data = previewsMap[typeId] || previewsMap['card'];
+            if (previewBox) previewBox.innerHTML = data.html;
+            if (previewLabel) previewLabel.textContent = (data.label || typeId).toUpperCase();
+            if (previewBadge) previewBadge.textContent = data.badge || 'COMPONENTE';
+            if (previewRecTitle) previewRecTitle.textContent = data.label || 'Componente';
+            if (previewRecDesc) previewRecDesc.textContent = data.recommendation || '';
+
+            // Actualizar estilo visual activo en la lista
+            container?.querySelectorAll('.elem-type-card-item').forEach(card => {
+                const isActive = card.dataset.id === typeId;
+                card.style.borderColor = isActive ? 'var(--colua-navy)' : '#e2e8f0';
+                card.style.background = isActive ? '#f0f7ff' : 'white';
+                card.style.boxShadow = isActive ? '0 4px 12px rgba(23, 55, 137, 0.08)' : 'none';
+            });
+        };
+
+        // Click en botón para usar el tipo activo
+        useBtn?.addEventListener('click', () => {
+            this.showEditItemModal(null, currentActiveTypeId);
+        });
+
+        // Filtrado por categoría y búsqueda
+        let activeCat = 'all';
         const filterItems = () => {
-            const q = searchInput.value.toLowerCase().trim();
-            const items = container.querySelectorAll('.elem-type-card-item');
+            const q = searchInput?.value?.toLowerCase().trim() || '';
+            const items = container?.querySelectorAll('.elem-type-card-item') || [];
             items.forEach(it => {
                 const matchCat = activeCat === 'all' || it.dataset.cat === activeCat;
                 const matchSearch = !q || it.dataset.title.includes(q) || it.dataset.sub.includes(q);
@@ -2650,22 +3104,24 @@ class AdminComponent {
             });
         });
 
+        // Eventos hover y click en cada tipo
         container?.querySelectorAll('.elem-type-card-item').forEach(card => {
             card.addEventListener('mouseenter', () => {
-                card.style.borderColor = 'var(--colua-navy)';
-                card.style.boxShadow = '0 4px 12px rgba(23, 55, 137, 0.08)';
-                card.style.transform = 'translateY(-1px)';
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.borderColor = '#e2e8f0';
-                card.style.boxShadow = 'none';
-                card.style.transform = 'none';
+                const typeId = card.dataset.id;
+                updatePreview(typeId);
             });
             card.addEventListener('click', () => {
+                const typeId = card.dataset.id;
+                updatePreview(typeId);
+            });
+            card.addEventListener('dblclick', () => {
                 const typeId = card.dataset.id;
                 this.showEditItemModal(null, typeId);
             });
         });
+
+        // Renderizado inicial del primer tipo
+        updatePreview(currentActiveTypeId);
     }
 
     showEditItemModal(item, chosenTypeId = 'card') {
@@ -2678,23 +3134,79 @@ class AdminComponent {
             { id: 'q_3', question: '¿Cuál es tu consulta o solicitud?', type: 'textarea', required: true, placeholder: 'Escribe aquí tu duda, respuesta o mensaje...' }
         ];
 
+        let defaultTitle = '';
+        if (activeType === 'job_vacancy') defaultTitle = 'COORDINADOR DE COMPENSACIÓN FIJA Y VARIABLE';
+        else if (activeType === 'pdf_document') defaultTitle = 'Documento Oficial en PDF';
+        else if (activeType === 'form_lead') defaultTitle = 'Formulario de Consultas y Solicitud';
+        else if (activeType === 'image') defaultTitle = 'Imagen Institucional';
+        else if (activeType === 'text') defaultTitle = 'Título o Mensaje Informativo';
+        else if (activeType === 'button') defaultTitle = 'Botón de Acción';
+
+        let defaultSubtitle = '';
+        if (activeType === 'job_vacancy') defaultSubtitle = 'Administración, San Juan Argueta.';
+        else if (activeType === 'pdf_document') defaultSubtitle = 'Formato Digital Oficial';
+        else if (activeType === 'form_lead') defaultSubtitle = 'Envía tus datos o preguntas directamente a la administración';
+
+        let defaultDesc = '';
+        if (activeType === 'job_vacancy') defaultDesc = 'Buscamos profesional para coordinar y supervisar los procesos de planilla, compensación fija y variable de la cooperativa.';
+        else if (activeType === 'pdf_document') defaultDesc = 'Haz clic para abrir y visualizar el documento oficial en una nueva pestaña del navegador.';
+        else if (activeType === 'form_lead') defaultDesc = 'Completa los campos para que un asesor o administrador atienda tu solicitud a la brevedad.';
+
+        let defaultImg = '';
+        if (activeType === 'job_vacancy') defaultImg = 'assets/plaza_coordinador_compensacion.jpg';
+        else if (activeType === 'image') defaultImg = 'assets/colua_edificio.png';
+        else if (activeType === 'form_lead') defaultImg = 'assets/distintivo_colua.png';
+
+        let defaultBtnText = '';
+        if (activeType === 'job_vacancy') defaultBtnText = 'Aplicar enviando CV';
+        else if (activeType === 'pdf_document') defaultBtnText = 'Ver Documento PDF';
+        else if (activeType === 'form_lead') defaultBtnText = 'Enviar Respuestas al Admin';
+        else if (activeType === 'button') defaultBtnText = 'Contactar con Asesor';
+
+        let defaultBtnAction = '';
+        if (activeType === 'job_vacancy') defaultBtnAction = 'mailto:talentoh@coluarl.com.gt?subject=Postulacion';
+        else if (activeType === 'pdf_document') defaultBtnAction = 'pdf:' + (item?.pdfUrl || '');
+        else if (activeType === 'form_lead') defaultBtnAction = 'form:form_asociate';
+        else if (activeType === 'button') defaultBtnAction = 'tel:77957795';
+
         const currentData = item || {
             id: 'item_' + Date.now(),
             sectionId: this.selectedSectionId,
             type: activeType,
-            title: activeType === 'pdf_document' ? 'Documento Oficial en PDF' : (activeType === 'form_lead' ? 'Formulario de Consultas y Solicitud' : (activeType === 'image' ? 'Imagen Institucional' : (activeType === 'text' ? 'Título o Mensaje Informativo' : (activeType === 'button' ? 'Botón de Acción' : '')))),
-            subtitle: activeType === 'pdf_document' ? 'Formato Digital Oficial' : (activeType === 'form_lead' ? 'Envía tus datos o preguntas directamente a la administración' : ''),
-            description: activeType === 'pdf_document' ? 'Haz clic para abrir y visualizar el documento oficial en una nueva pestaña del navegador.' : (activeType === 'form_lead' ? 'Completa los campos para que un asesor o administrador atienda tu solicitud a la brevedad.' : ''),
-            imageUrl: activeType === 'image' ? 'assets/colua_edificio.png' : (activeType === 'form_lead' ? 'assets/distintivo_colua.png' : ''),
+            title: defaultTitle,
+            subtitle: defaultSubtitle,
+            description: defaultDesc,
+            imageUrl: defaultImg,
             icon: '',
             pdfUrl: item?.pdfUrl || '',
             fileName: item?.fileName || '',
             fileSize: item?.fileSize || 0,
-            buttonText: activeType === 'pdf_document' ? 'Ver Documento PDF' : (activeType === 'form_lead' ? 'Enviar Respuestas al Admin' : (activeType === 'button' ? 'Contactar con Asesor' : '')),
-            buttonAction: activeType === 'pdf_document' ? ('pdf:' + (item?.pdfUrl || '')) : (activeType === 'form_lead' ? 'form:form_asociate' : (activeType === 'button' ? 'tel:77957795' : '')),
+            buttonText: defaultBtnText,
+            buttonAction: defaultBtnAction,
             leadWhatsapp: '50277957795',
             formQuestions: defaultQuestions,
-            benefitItems: ['DPI vigente', 'Recibo de luz o agua reciente', 'Aportación mínima de Q50.00'],
+            requirements: activeType === 'job_vacancy' ? [
+                'Cierre de pensum en Contaduría Pública y Auditoría, Administración de Empresas o carrera afín.',
+                'Experiencia mínima de 2 años en puestos similares.',
+                'Disponibilidad de horario.'
+            ] : (item?.requirements || []),
+            skillsList: activeType === 'job_vacancy' ? [
+                'Administración de procesos de planilla.',
+                'Conocimientos en legislación laboral, ISR e información financiera.',
+                'Gestión y control de presupuestos de salarios y beneficios.',
+                'Elaboración y análisis de informes e indicadores de compensación.',
+                'Resolución de problemas y toma de decisiones.',
+                'Adaptabilidad y habilidades de gestión de personal.'
+            ] : (item?.skillsList || []),
+            benefitItems: activeType === 'job_vacancy' ? [
+                'Salario competitivo.',
+                'Estabilidad laboral.',
+                'Prestaciones adicionales a la ley.',
+                'Seguro de vida y consultas médicas.',
+                'Oportunidad de desarrollo, capacitación y formación continua.'
+            ] : (item?.benefitItems || ['DPI vigente', 'Recibo de luz o agua reciente', 'Aportación mínima de Q50.00']),
+            leadEmail: item?.leadEmail || 'talentoh@coluarl.com.gt',
+            deadline: item?.deadline || '17/09/2026',
             textHierarchy: 'h2',
             textAlign: 'left',
             orderIndex: this.selectedContentItems.length + 1,
@@ -2707,6 +3219,7 @@ class AdminComponent {
         }
 
         const typeLabels = {
+            'job_vacancy': 'Plaza Vacante / Empleo',
             'pdf_document': 'Documento PDF (Descargable / Visor)',
             'form_lead': 'Formulario / Consultas & Preguntas',
             'image': 'Elemento de Imagen',
@@ -2812,9 +3325,28 @@ class AdminComponent {
                         ${hasPdf ? `✓ Archivo cargado (${currentData.fileName || 'documento.pdf'}) listo para abrir.` : 'Ningún PDF seleccionado aún.'}
                     </div>
 
+                    <!-- Portada de la Primera Hoja generada automáticamente -->
+                    <div id="pdf-thumbnail-box" style="margin-top: 12px; background: white; border: 1.5px solid #fca5a5; border-radius: 10px; padding: 12px; display: ${currentData.imageUrl ? 'flex' : 'none'}; align-items: center; gap: 14px;">
+                        <div style="width: 70px; height: 95px; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.12); flex-shrink: 0; background: #f8fafc;">
+                            <img id="pdf-thumbnail-preview-img" src="${currentData.imageUrl || ''}" alt="Portada de la Primera Hoja" style="width: 100%; height: 100%; object-fit: cover; object-position: top center;" />
+                        </div>
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.82rem; font-weight: 700; color: #15803d; display: flex; align-items: center; gap: 5px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Portada de la Primera Hoja Lista
+                            </span>
+                            <span style="font-size: 0.74rem; color: #64748b; display: block; margin-top: 2px;">
+                                Esta primera página se mostrará automáticamente como carátula visual del documento en la tarjeta pública.
+                            </span>
+                        </div>
+                    </div>
+
                     <div style="margin-top: 10px;">
                         <label style="display: block; font-size: 0.76rem; font-weight: 700; color: #7f1d1d; margin-bottom: 4px;">Ruta / Enlace URL del PDF (Generado automáticamente al subir o ingresado manual):</label>
-                        <input type="text" id="item-pdf-url" value="${currentData.pdfUrl || ''}" placeholder="https://... o data:application/pdf;base64,..." style="width: 100%; padding: 7px 10px; border: 1.5px solid #fca5a5; border-radius: 6px; font-size: 0.8rem; font-family: monospace; background: white;" />
+                        <input type="text" id="item-pdf-url" value="${currentData.pdfUrl || ''}" placeholder="https://... o assets/documentos/archivo.pdf" style="width: 100%; padding: 7px 10px; border: 1.5px solid #fca5a5; border-radius: 6px; font-size: 0.8rem; font-family: monospace; background: white;" />
+                        <span style="font-size: 0.72rem; color: #991b1b; display: block; margin-top: 4px;">
+                            💡 <strong>Para verlo en todos los dispositivos:</strong> Si el archivo supera los 10MB, puedes subirlo a Google Drive (enlace público) o guardarlo en la carpeta <code>assets/</code> y pegar aquí el enlace.
+                        </span>
                     </div>
                 </div>
 
@@ -2898,7 +3430,7 @@ class AdminComponent {
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #166534; margin-bottom: 3px;">Texto del Botón de Envío:</label>
-                            <input type="text" id="item-btn-text" value="${currentData.buttonText || 'Enviar Solicitud y Coordinar Pago'}" placeholder="Ej: Enviar Solicitud" style="width: 100%; padding: 8px 10px; border: 1.5px solid #86efac; border-radius: 6px; font-size: 0.85rem; background: white;" />
+                            <input type="text" id="item-btn-text" value="${currentData.buttonText || 'Enviar Solicitud'}" placeholder="Ej: Enviar Solicitud" style="width: 100%; padding: 8px 10px; border: 1.5px solid #86efac; border-radius: 6px; font-size: 0.85rem; background: white;" />
                         </div>
                     </div>
 
@@ -3058,6 +3590,201 @@ class AdminComponent {
                     <span style="font-size: 0.72rem; color: #64748b; display: block; margin-top: 4px;">Cada línea se renderizará automáticamente con un ícono de verificación (✓).</span>
                 </div>
             `;
+        } else if (activeType === 'strategic_axis') {
+            // === 5B. EDITOR ESPECIALIZADO: EJE ESTRATÉGICO / PROGRAMAS (DISEÑO IMAGEN 2) ===
+            const defaultProgs = [
+                'Educación y Formación Financiera: Capacitación continua en finanzas familiares y uso responsable del crédito.',
+                'Programa de Becas Jóvenes Cooperativistas: Financiamiento educativo para estudiantes destacados.',
+                'Programa de Educación Financiera Huellas: Formación de hábitos de ahorro para niños y jóvenes.',
+                'Programa Wachalal: Acompañamiento escolar y valores cooperativos en escuelas locales.'
+            ];
+            let progsText = '';
+            if (Array.isArray(currentData.benefitItems) && currentData.benefitItems.length > 0) {
+                progsText = currentData.benefitItems.join('\n');
+            } else if (isNew) {
+                progsText = defaultProgs.join('\n');
+            }
+
+            typeSpecificHtml = `
+                <div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    </div>
+                    <div>
+                        <strong style="color: #5b21b6; font-size: 0.88rem; display: block;">Componente: Eje Estratégico / Programa Completo</strong>
+                        <span style="color: #6d28d9; font-size: 0.76rem;">Se mostrará como una tarjeta ancha con imagen lateral y cuadrícula de sub-programas con checks (idéntico a Sostenibilidad).</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 4px;">Título del Eje o Proyecto *</label>
+                    <input type="text" id="item-title" value="${currentData.title || ''}" required placeholder="Ej: Educación y Formación Cooperativa" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Etiqueta Superior / Kicker (Número de Eje)</label>
+                    <input type="text" id="item-subtitle" value="${currentData.subtitle || 'Eje Estratégico 01'}" placeholder="Ej: Eje Estratégico 01 / Convocatoria 2026" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Descripción General del Eje</label>
+                    <textarea id="item-desc" rows="3" placeholder="Fortalecemos las capacidades individuales y colectivas mediante la educación financiera y el cooperativismo..." style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem;">${currentData.description || ''}</textarea>
+                </div>
+
+                <!-- Campo directo para los Programas e Iniciativas -->
+                <div class="form-group" style="margin-bottom: 14px; background: #ffffff; border: 1.5px solid #c7d2fe; border-radius: 10px; padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 0.86rem; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 6px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                            <span>Programas e Iniciativas Incluidas (Cuadrícula con Checks ✓)</span>
+                        </label>
+                        <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; font-weight: 700;">TÍTULO: DESCRIPCIÓN</span>
+                    </div>
+                    <p style="font-size: 0.78rem; color: #4338ca; margin: 0 0 8px 0; line-height: 1.4;">
+                        Escribe un programa o iniciativa por línea. Separa el título de su descripción con dos puntos (<strong>:</strong>).
+                    </p>
+                    <textarea id="item-strategic-programs" rows="5" placeholder="Educación y Formación Financiera: Capacitación continua en finanzas familiares y uso responsable del crédito.&#10;Programa de Becas Jóvenes Cooperativistas: Financiamiento educativo para estudiantes destacados.&#10;Programa Huellas: Formación de hábitos de ahorro para niños y jóvenes." style="width: 100%; padding: 10px 12px; border: 1.5px solid #a5b4fc; border-radius: 8px; font-size: 0.85rem; font-family: inherit; line-height: 1.5;">${progsText}</textarea>
+                </div>
+
+                <!-- Selector de Imagen Lateral -->
+                <div class="form-group" style="margin-bottom: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 6px;">Fotografía o Ilustración Lateral (Izquierda):</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="width: 60px; height: 50px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <img id="item-img-preview" src="${currentData.imageUrl || 'assets/noticia_taller_finanzas.jpg'}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/programa_wachalal.png'" />
+                        </div>
+                        <div style="flex: 1;">
+                            <input type="text" id="item-img-url" value="${currentData.imageUrl || 'assets/noticia_taller_finanzas.jpg'}" placeholder="assets/noticia_taller_finanzas.jpg" style="width: 100%; padding: 8px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem;" />
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (activeType === 'job_vacancy') {
+            // === 5C. EDITOR ESPECIALIZADO: PLAZA VACANTE / EMPLEO ===
+            const reqsText = Array.isArray(currentData.requirements) ? currentData.requirements.join('\n') : (currentData.requirements || '');
+            const skillsText = Array.isArray(currentData.skillsList) ? currentData.skillsList.join('\n') : (currentData.skillsList || '');
+            const benefitsText = Array.isArray(currentData.benefitItems) ? currentData.benefitItems.join('\n') : (currentData.benefitItems || '');
+            const jobEmail = currentData.leadEmail || currentData.email || 'talentoh@coluarl.com.gt';
+            const jobDeadline = currentData.deadline || '17/09/2026';
+            const jobImg = currentData.imageUrl || 'assets/plaza_coordinador_compensacion.jpg';
+
+            typeSpecificHtml = `
+                <div style="background: #fefce8; border: 1.5px solid #fef08a; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #ca8a04; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </div>
+                    <div>
+                        <strong style="color: #854d0e; font-size: 0.88rem; display: block;">Componente: Plaza Vacante / Convocatoria Laboral</strong>
+                        <span style="color: #a16207; font-size: 0.76rem;">Formato oficial para convocatorias de empleo COLUA con puesto, sede, requisitos, habilidades y recepción de CV.</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 4px;">Título de la Plaza o Puesto *</label>
+                    <input type="text" id="item-title" value="${currentData.title || ''}" required placeholder="Ej: COORDINADOR DE COMPENSACIÓN FIJA Y VARIABLE" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.9rem;" />
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #166534; margin-bottom: 4px;">Sede / Ubicación del Puesto *</label>
+                        <input type="text" id="item-subtitle" value="${currentData.subtitle || ''}" required placeholder="Ej: Administración, San Juan Argueta." style="width: 100%; padding: 8px 10px; border: 1.5px solid #bbf7d0; border-radius: 8px; font-size: 0.86rem;" />
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #991b1b; margin-bottom: 4px;">Fecha Límite de Aplicación</label>
+                        <input type="text" id="item-job-deadline" value="${jobDeadline}" placeholder="Ej: 17/09/2026" style="width: 100%; padding: 8px 10px; border: 1.5px solid #fecaca; border-radius: 8px; font-size: 0.86rem;" />
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Descripción o Resumen del Puesto</label>
+                    <textarea id="item-desc" rows="2" placeholder="Breve resumen del objetivo de la posición..." style="width: 100%; padding: 8px 10px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.85rem;">${currentData.description || ''}</textarea>
+                </div>
+
+                <!-- 2 Columnas para Requisitos y Habilidades -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                        <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+                            📋 Requisitos del Puesto (uno por línea):
+                        </label>
+                        <textarea id="item-job-requirements" rows="4" placeholder="• Cierre de pensum en CPA o Admón.&#10;• Experiencia mínima 2 años.&#10;• Disponibilidad de horario." style="width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem; font-family: inherit;">${reqsText}</textarea>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                        <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+                            💡 Habilidades Deseadas (una por línea):
+                        </label>
+                        <textarea id="item-job-skills" rows="4" placeholder="• Administración de planillas.&#10;• Conocimiento laboral e ISR.&#10;• Resolución de problemas." style="width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem; font-family: inherit;">${skillsText}</textarea>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 10px;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #166534; margin-bottom: 4px;">
+                        🌟 Beneficios / Lo que Ofrecemos (uno por línea):
+                    </label>
+                    <textarea id="item-job-benefits" rows="3" placeholder="• Salario competitivo.&#10;• Estabilidad laboral.&#10;• Seguro de vida y médico." style="width: 100%; padding: 7px 9px; border: 1px solid #86efac; border-radius: 6px; font-size: 0.8rem; font-family: inherit;">${benefitsText}</textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #1e40af; margin-bottom: 4px;">Correo para Envío de CV *</label>
+                        <input type="email" id="item-job-email" value="${jobEmail}" placeholder="talentoh@coluarl.com.gt" style="width: 100%; padding: 8px 10px; border: 1.5px solid #93c5fd; border-radius: 8px; font-size: 0.86rem; font-weight: 600;" />
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-700); margin-bottom: 4px;">Texto del Botón de Aplicación</label>
+                        <input type="text" id="item-btn-text" value="${currentData.buttonText || 'Aplicar enviando CV'}" placeholder="Aplicar enviando CV" style="width: 100%; padding: 8px 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.86rem;" />
+                    </div>
+                </div>
+
+                <!-- Afiche Oficial: Subir archivo desde equipo o ingresar link -->
+                <div class="form-group" style="margin-bottom: 14px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="display: block; font-size: 0.84rem; font-weight: 800; color: #1e3a8a; margin: 0;">
+                            🖼️ Afiche Gráfico Oficial (Imagen Completa):
+                        </label>
+                        <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">Sube desde tu equipo o pega un Link</span>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+                        <!-- Miniatura Preview con opción de ampliar -->
+                        <div style="width: 60px; height: 75px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.06);">
+                            <img id="item-img-preview" src="${jobImg}" alt="Afiche" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/distintivo_colua.png'" />
+                        </div>
+
+                        <!-- Botones de Acción y Estado -->
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <label class="btn btn-primary" style="padding: 7px 14px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0; background: #173789; border-radius: 8px; box-shadow: 0 2px 6px rgba(23,55,137,0.25);">
+                                    <span>📁 Subir desde mi Equipo</span>
+                                    <input type="file" id="item-file-input" accept="image/jpeg,image/png,image/webp,image/jpg" style="display: none;" />
+                                </label>
+                                <button type="button" id="btn-view-current-flyer" style="padding: 6px 12px; font-size: 0.78rem; font-weight: 600; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                    🔍 Ver afiche completo
+                                </button>
+                            </div>
+                            <div id="upload-status" style="font-size: 0.75rem; color: #475569; font-weight: 600; min-height: 16px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Entrada de Link o Ruta del Afiche -->
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px;">
+                            🔗 O ingresa directamente el Link o ruta de la imagen:
+                        </label>
+                        <input type="text" id="item-img-url" value="${jobImg}" placeholder="https://ejemplo.com/afiche.jpg o assets/plaza_coordinador_compensacion.jpg" style="width: 100%; padding: 8px 10px; border: 1.5px solid #cbd5e1; border-radius: 7px; font-size: 0.82rem; font-family: monospace; background: white;" />
+                    </div>
+
+                    <!-- Drag & Drop Zone -->
+                    <div id="job-flyer-dropzone" style="border: 1.5px dashed #93c5fd; border-radius: 8px; padding: 8px 12px; background: #f0f7ff; text-align: center; cursor: pointer; transition: all 0.2s ease;">
+                        <span style="font-size: 0.74rem; color: #1d4ed8; font-weight: 600;">
+                            🖱️ O arrastra y suelta aquí tu afiche desde tu equipo (JPG, PNG, WEBP)
+                        </span>
+                    </div>
+
+                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 6px; display: block;">
+                        Permite a los postulantes ver o descargar el afiche oficial tal como se diseñó.
+                    </span>
+                </div>
+            `;
         } else {
             // === 6. EDITOR POR DEFECTO: PRODUCTO FINANCIERO / TARJETA ===
             typeSpecificHtml = `
@@ -3104,7 +3831,7 @@ class AdminComponent {
         }
 
         const modalHtml = `
-            <div style="max-width: 560px; width: 100%; text-align: left;">
+            <div style="max-width: 600px; width: 100%; text-align: left;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 12px;">
                     <div>
                         <span style="font-size: 0.72rem; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 4px;">
@@ -3120,15 +3847,29 @@ class AdminComponent {
                     ${typeSpecificHtml}
 
                     <!-- Estados Globales de Publicación -->
-                    <div style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 600; color: var(--colua-gray-800); cursor: pointer;">
                             <input type="checkbox" id="item-enabled" ${currentData.isEnabled !== false && currentData.isVisible !== false ? 'checked' : ''} style="width: 18px; height: 18px;" />
-                            <span>Elemento Activo / Publicado en la web</span>
+                            <span>Elemento Activo / Visible en la web</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; color: #b45309; cursor: pointer;">
-                            <input type="checkbox" id="item-is-draft" ${currentData.isDraft === true ? 'checked' : ''} style="width: 18px; height: 18px;" />
-                            <span>Guardar como Borrador (No visible para usuarios públicos)</span>
-                        </label>
+                        <span style="font-size: 0.74rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 3px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #bbf7d0;">
+                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span> Auto-publicación en vivo
+                        </span>
+                    </div>
+
+                    <!-- Vista Previa en Vivo mientras escribes -->
+                    <div style="margin-bottom: 16px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 12px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #475569; letter-spacing: 0.4px;">
+                                👁️ VISTA PREVIA EN TIEMPO REAL:
+                            </span>
+                            <span style="font-size: 0.68rem; color: #16a34a; font-weight: 700; background: #dcfce7; padding: 1px 6px; border-radius: 4px;">
+                                Actualización en vivo
+                            </span>
+                        </div>
+                        <div id="live-edit-card-preview-container" style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
+                            <!-- Se actualiza con input listeners -->
+                        </div>
                     </div>
 
                     <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--colua-gray-200); padding-top: 14px;">
@@ -3140,6 +3881,139 @@ class AdminComponent {
         `;
 
         app.showModal(modalHtml);
+
+        const modalCard = document.querySelector('.modal-card');
+        if (modalCard) {
+            modalCard.style.maxWidth = '620px';
+        }
+
+        // Función para actualizar la vista previa en tiempo real dentro del modal de edición
+        const updateLiveEditPreview = () => {
+            const previewContainer = document.getElementById('live-edit-card-preview-container');
+            if (!previewContainer) return;
+
+            const titleVal = document.getElementById('item-title')?.value || currentData.title || 'Título de ejemplo';
+            const subVal = document.getElementById('item-subtitle')?.value || currentData.subtitle || '';
+            const descVal = document.getElementById('item-desc')?.value || currentData.description || 'Descripción del elemento...';
+            const imgVal = document.getElementById('item-img-url')?.value || currentData.imageUrl || 'assets/distintivo_colua.png';
+            const btnTextVal = document.getElementById('item-btn-text')?.value || currentData.buttonText || 'Ver Más Información';
+
+            if (activeType === 'strategic_axis') {
+                const progsVal = document.getElementById('item-strategic-programs')?.value || '';
+                const lines = progsVal ? progsVal.split('\n').filter(Boolean) : [];
+                previewContainer.innerHTML = `
+                    <div style="border: 1.5px solid #ddd6fe; border-radius: 10px; overflow: hidden; background: white;">
+                        <div style="display: grid; grid-template-columns: 90px 1fr;">
+                            <div style="height: 100%; min-height: 120px; background: #0f172a;">
+                                <img src="${imgVal}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/programa_wachalal.png'" />
+                            </div>
+                            <div style="padding: 10px 12px;">
+                                <span style="font-size: 0.64rem; font-weight: 800; color: #634794; text-transform: uppercase;">${subVal || 'EJE ESTRATÉGICO'}</span>
+                                <h4 style="font-size: 0.92rem; font-weight: 800; color: #0f172a; margin: 2px 0 4px 0;">${titleVal}</h4>
+                                <p style="font-size: 0.74rem; color: #64748b; margin: 0 0 6px 0;">${descVal}</p>
+                                ${lines.length > 0 ? `
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                        ${lines.slice(0, 4).map(l => {
+                                            const parts = l.split(':');
+                                            return `
+                                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px 6px; font-size: 0.65rem; color: #1e293b;">
+                                                    <span style="color:#634794;font-weight:800;">✓</span> <strong>${parts[0].trim()}:</strong> ${parts[1] ? parts[1].trim() : ''}
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeType === 'job_vacancy') {
+                const reqsVal = document.getElementById('item-job-requirements')?.value || '';
+                const reqLines = reqsVal ? reqsVal.split('\n').filter(Boolean) : [];
+                const benefitsVal = document.getElementById('item-job-benefits')?.value || '';
+                const benefitsLines = benefitsVal ? benefitsVal.split('\n').filter(Boolean) : [];
+                const deadlineVal = document.getElementById('item-job-deadline')?.value || '17/09/2026';
+                const emailVal = document.getElementById('item-job-email')?.value || 'talentoh@coluarl.com.gt';
+
+                previewContainer.innerHTML = `
+                    <div style="border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 4px 14px rgba(0,0,0,0.04);">
+                        <div style="display: grid; grid-template-columns: 110px 1fr;">
+                            <div style="background: linear-gradient(180deg, #173789 0%, #0c2054 100%); color: white; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <span style="font-size: 0.6rem; font-weight: 800; color: #93c5fd; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">PLAZA VACANTE</span>
+                                    <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 26px; height: 26px; margin: 0 auto; display: block;" onerror="this.src='assets/logo_colua.png'" />
+                                </div>
+                                <div style="font-size: 0.52rem; color: #fde047; font-weight: 700; border-top: 1px dashed rgba(255,255,255,0.25); padding-top: 4px;">
+                                    Límite: ${deadlineVal}
+                                </div>
+                            </div>
+                            <div style="padding: 10px 12px;">
+                                ${subVal ? `<span style="font-size: 0.62rem; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 3px;">📍 Sede: ${subVal}</span>` : ''}
+                                <h4 style="font-size: 0.88rem; font-weight: 800; color: #c2410c; margin: 0 0 4px 0; line-height: 1.25;">${titleVal}</h4>
+                                <p style="font-size: 0.72rem; color: #64748b; margin: 0 0 6px 0;">${descVal}</p>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
+                                    ${reqLines.length > 0 ? `
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px 6px; font-size: 0.62rem; color: #334155;">
+                                            <strong style="color: #0f172a;">Requisitos:</strong>
+                                            <div style="margin-top: 2px;">${reqLines.slice(0, 2).map(r => '• ' + r.replace(/^[•\-*]\s*/, '')).join('<br/>')}</div>
+                                        </div>
+                                    ` : ''}
+                                    ${benefitsLines.length > 0 ? `
+                                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 4px 6px; font-size: 0.62rem; color: #14532d;">
+                                            <strong style="color: #166534;">Ofrecemos:</strong>
+                                            <div style="margin-top: 2px;">${benefitsLines.slice(0, 2).map(b => '• ' + b.replace(/^[•\-*]\s*/, '')).join('<br/>')}</div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; padding: 4px 8px; border-radius: 6px;">
+                                    <span style="font-size: 0.65rem; color: #1d4ed8; font-weight: 700;">✉️ ${emailVal}</span>
+                                    <span style="font-size: 0.62rem; background: #173789; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 700;">Enviar CV</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeType === 'benefit_list') {
+                const reqsVal = document.getElementById('item-benefit-items')?.value || '';
+                const lines = reqsVal ? reqsVal.split('\n').filter(Boolean) : [];
+                previewContainer.innerHTML = `
+                    <div style="padding: 8px;">
+                        <h4 style="font-size: 0.92rem; font-weight: 800; color: #0f172a; margin: 0 0 6px 0;">${titleVal}</h4>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            ${lines.slice(0, 4).map(l => `
+                                <div style="font-size: 0.74rem; color: #334155; display: flex; align-items: center; gap: 6px;">
+                                    <span style="color:#16a34a;font-weight:800;">✓</span> <span>${l}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                previewContainer.innerHTML = `
+                    <div style="max-width: 240px; margin: 0 auto; text-align: center; padding: 10px;">
+                        <div style="width: 36px; height: 36px; margin: 0 auto 6px auto; border-radius: 8px; background: rgba(23, 55, 137, 0.08); display: flex; align-items: center; justify-content: center;">
+                            <img src="${imgVal}" alt="Preview" style="max-width: 24px; max-height: 24px; object-fit: contain;" onerror="this.src='assets/distintivo_colua.png'" />
+                        </div>
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #0f172a; margin: 0 0 2px 0;">${titleVal}</h4>
+                        ${subVal ? `<span style="font-size: 0.72rem; font-weight: 700; color: #2563eb; display: block; margin-bottom: 4px;">${subVal}</span>` : ''}
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0 0 8px 0;">${descVal}</p>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 0.72rem; font-weight: 700; color: #173789;">
+                            ${btnTextVal}
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        // Escuchar cambios en los inputs para actualizar en tiempo real
+        ['item-title', 'item-subtitle', 'item-desc', 'item-strategic-programs', 'item-benefit-items', 'item-img-url', 'item-btn-text', 'item-job-requirements', 'item-job-skills', 'item-job-benefits', 'item-job-email', 'item-job-deadline'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', updateLiveEditPreview);
+        });
+
+        // Llamado inicial
+        updateLiveEditPreview();
 
         // LÓGICA DEL CONSTRUCTOR DE PREGUNTAS (Para form_lead)
         let dynamicQuestions = Array.isArray(currentData.formQuestions) ? [...currentData.formQuestions] : [...defaultQuestions];
@@ -3278,24 +4152,131 @@ class AdminComponent {
         thumbs.forEach(t => {
             t.addEventListener('click', () => {
                 const path = t.dataset.path;
-                if (imgUrlInput) imgUrlInput.value = path;
+                if (imgUrlInput) {
+                    imgUrlInput.value = path;
+                    imgUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
                 if (imgPreview) imgPreview.src = path;
                 thumbs.forEach(other => other.style.borderColor = '#cbd5e1');
                 t.style.borderColor = 'var(--colua-navy)';
             });
         });
 
+        // Actualizar la miniatura en tiempo real cuando el usuario escribe o pega un link
+        if (imgUrlInput && imgPreview) {
+            imgUrlInput.addEventListener('input', () => {
+                const val = imgUrlInput.value.trim();
+                imgPreview.src = val || 'assets/distintivo_colua.png';
+            });
+        }
+
+        // Subida de imagen / afiche oficial desde el equipo
         if (fileInput) {
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                    if (uploadStatus) uploadStatus.textContent = 'Subiendo imagen...';
-                    const res = await window.supabaseStorageManager.uploadImage(file, (msg) => { if (uploadStatus) uploadStatus.textContent = msg; });
-                    if (res.success) {
-                        if (imgUrlInput) imgUrlInput.value = res.url;
-                        if (imgPreview) imgPreview.src = res.url;
-                        if (uploadStatus) uploadStatus.textContent = '✓ Imagen cargada';
+                if (!file) return;
+
+                if (uploadStatus) {
+                    uploadStatus.innerHTML = '<span style="color:#d97706;font-weight:700;">⏳ Subiendo y procesando afiche/imagen...</span>';
+                }
+
+                try {
+                    let uploader = window.supabaseStorageManager;
+                    if (!uploader && typeof SupabaseStorageManager !== 'undefined') {
+                        window.supabaseStorageManager = new SupabaseStorageManager();
+                        uploader = window.supabaseStorageManager;
                     }
+
+                    let res = null;
+                    if (uploader && uploader.uploadImage) {
+                        res = await uploader.uploadImage(file, (msg) => {
+                            if (uploadStatus) uploadStatus.innerHTML = `<span style="color:#2563eb;font-weight:600;">⏳ ${msg}</span>`;
+                        });
+                    }
+
+                    let finalUrl = '';
+                    if (res && res.success && res.url) {
+                        finalUrl = res.url;
+                    } else {
+                        // Fallback con FileReader local para máxima fiabilidad
+                        finalUrl = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => resolve(ev.target.result);
+                            reader.onerror = () => resolve('');
+                            reader.readAsDataURL(file);
+                        });
+                    }
+
+                    if (finalUrl) {
+                        if (imgUrlInput) {
+                            imgUrlInput.value = finalUrl;
+                            imgUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        if (imgPreview) imgPreview.src = finalUrl;
+                        if (uploadStatus) {
+                            uploadStatus.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Afiche cargado exitosamente</span>';
+                        }
+                        updateLiveEditPreview();
+                    } else {
+                        if (uploadStatus) {
+                            uploadStatus.innerHTML = '<span style="color:#dc2626;font-weight:700;">✕ No se pudo procesar la imagen</span>';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error al subir imagen:', err);
+                    if (uploadStatus) {
+                        uploadStatus.innerHTML = `<span style="color:#dc2626;font-weight:700;">✕ Error: ${err.message}</span>`;
+                    }
+                }
+            });
+        }
+
+        // Drag & Drop para zona de afiche
+        const flyerDropZone = document.getElementById('job-flyer-dropzone');
+        if (flyerDropZone && fileInput) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                flyerDropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    flyerDropZone.style.borderColor = '#173789';
+                    flyerDropZone.style.background = '#dbeafe';
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                flyerDropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    flyerDropZone.style.borderColor = '#93c5fd';
+                    flyerDropZone.style.background = '#f0f7ff';
+                }, false);
+            });
+            flyerDropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files[0] && files[0].type.startsWith('image/')) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            flyerDropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        // Botón para previsualizar afiche actual
+        const btnViewFlyer = document.getElementById('btn-view-current-flyer');
+        if (btnViewFlyer) {
+            btnViewFlyer.addEventListener('click', () => {
+                const currentFlyerUrl = imgUrlInput?.value?.trim() || '';
+                const currentTitle = document.getElementById('item-title')?.value || 'Afiche Oficial';
+                if (!currentFlyerUrl) {
+                    alert('Por favor primero sube un afiche o ingresa un enlace de imagen.');
+                    return;
+                }
+                if (window.sectionsComponent && window.sectionsComponent.viewJobFlyer) {
+                    window.sectionsComponent.viewJobFlyer(currentFlyerUrl, currentTitle);
+                } else {
+                    window.open(currentFlyerUrl, '_blank');
                 }
             });
         }
@@ -3354,6 +4335,31 @@ class AdminComponent {
                     const titleInput = document.getElementById('item-title');
                     if (titleInput && (!titleInput.value || titleInput.value === 'Documento Oficial en PDF')) {
                         titleInput.value = file.name.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    }
+
+                    // Generar automáticamente la carátula de la primera hoja del PDF
+                    try {
+                        if (window.generatePdfThumbnail) {
+                            if (pdfStatusBox) {
+                                pdfStatusBox.innerHTML += ' <span style="color:#2563eb;">(Generando carátula de primera página...)</span>';
+                            }
+                            const thumbUrl = await window.generatePdfThumbnail(file, 600, 0.85);
+                            if (thumbUrl) {
+                                currentData.imageUrl = thumbUrl;
+                                const thumbBox = document.getElementById('pdf-thumbnail-box');
+                                const thumbImg = document.getElementById('pdf-thumbnail-preview-img');
+                                if (thumbBox && thumbImg) {
+                                    thumbImg.src = thumbUrl;
+                                    thumbBox.style.display = 'flex';
+                                }
+                                if (pdfStatusBox) {
+                                    const sizeMb = (res.fileSize / (1024 * 1024)).toFixed(2);
+                                    pdfStatusBox.innerHTML = `✓ <strong style="color:#15803d;">${res.fileName}</strong> (${sizeMb} MB) guardado con carátula de primera hoja.`;
+                                }
+                            }
+                        }
+                    } catch (thumbErr) {
+                        console.warn('[COLUA PDF] No se pudo generar la carátula de la primera hoja:', thumbErr);
                     }
                 } else {
                     if (pdfStatusBox) pdfStatusBox.innerHTML = `❌ Error: ${res?.error || 'No se pudo subir el archivo'}`;
@@ -3475,10 +4481,33 @@ class AdminComponent {
                 }
 
                 let benefitItems = currentData.benefitItems || [];
+                let jobReqs = currentData.requirements || [];
+                let jobSkills = currentData.skillsList || [];
+                let jobEmail = currentData.leadEmail || '';
+                let jobDeadline = currentData.deadline || '';
+
                 if (activeType === 'benefit_list') {
                     const rawItems = document.getElementById('item-benefit-items')?.value?.trim() || '';
                     benefitItems = rawItems ? rawItems.split('\n').map(i => i.trim()).filter(Boolean) : [];
                     updatedSubtitle = benefitItems.join(', ');
+                } else if (activeType === 'strategic_axis') {
+                    const rawProgs = document.getElementById('item-strategic-programs')?.value?.trim() || '';
+                    benefitItems = rawProgs ? rawProgs.split('\n').map(p => p.trim()).filter(Boolean) : [];
+                } else if (activeType === 'job_vacancy') {
+                    const rawReqs = document.getElementById('item-job-requirements')?.value?.trim() || '';
+                    jobReqs = rawReqs ? rawReqs.split('\n').map(r => r.trim()).filter(Boolean) : [];
+
+                    const rawSkills = document.getElementById('item-job-skills')?.value?.trim() || '';
+                    jobSkills = rawSkills ? rawSkills.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+                    const rawBenefits = document.getElementById('item-job-benefits')?.value?.trim() || '';
+                    benefitItems = rawBenefits ? rawBenefits.split('\n').map(b => b.trim()).filter(Boolean) : [];
+
+                    jobEmail = document.getElementById('item-job-email')?.value?.trim() || 'talentoh@coluarl.com.gt';
+                    jobDeadline = document.getElementById('item-job-deadline')?.value?.trim() || '17/09/2026';
+
+                    updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || 'Aplicar enviando CV';
+                    updatedBtnAction = 'mailto:' + jobEmail + '?subject=' + encodeURIComponent('Postulación: ' + updatedTitle);
                 }
 
                 const updated = {
@@ -3497,19 +4526,50 @@ class AdminComponent {
                     fileSize: currentData.fileSize || 0,
                     leadWhatsapp: updatedLeadWhatsapp,
                     webhookUrl: formWebhookUrl,
-                    requirements: formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || []),
+                    requirements: activeType === 'job_vacancy' ? jobReqs : (formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || [])),
+                    skillsList: jobSkills,
+                    leadEmail: jobEmail,
+                    deadline: jobDeadline,
                     formQuestions: activeType === 'form_lead' ? dynamicQuestions : (currentData.formQuestions || []),
                     benefitItems: benefitItems,
                     textHierarchy: document.getElementById('item-text-hierarchy')?.value || currentData.textHierarchy || 'h2',
                     textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
                     isEnabled: isEnabledVal,
                     isVisible: isEnabledVal,
-                    isDraft: isDraftVal,
-                    isPublished: !isDraftVal,
+                    isDraft: false,
+                    isPublished: true,
                     lastModified: Date.now()
                 };
 
+                // Si la tarjeta pertenece a la sección de noticias, asegurar campos esenciales para renderizar en Noticias
+                const secClean = (targetSecVal || '').toLowerCase();
+                if (secClean === 'sec_noticias' || secClean === 'noticias' || (currentData.id || '').startsWith('news_')) {
+                    if (!updated.publicationDate && !updated.date && !updated.fecha) {
+                        updated.publicationDate = new Date().toISOString();
+                    }
+                    if (!updated.issuerName) updated.issuerName = 'Cooperativa COLUA R.L.';
+                    if (!updated.issuerRole) updated.issuerRole = 'Comunicación Oficial';
+                    if (!updated.tags) updated.tags = '#COLUA';
+                    updated.likesCount = Number(updated.likesCount) || 0;
+                    updated.sharesCount = Number(updated.sharesCount) || 0;
+                }
+
                 await coluaRepo.saveContentItem(updated);
+
+                // Si es un Eje Estratégico, sincronizar también cada programa como bloque atómico
+                if (activeType === 'strategic_axis' && benefitItems.length > 0) {
+                    for (let bIdx = 0; bIdx < benefitItems.length; bIdx++) {
+                        const blkId = `b_${currentData.id}_${bIdx + 1}`;
+                        await coluaRepo.saveContentBlock({
+                            id: blkId,
+                            itemId: currentData.id,
+                            sectionId: targetSecVal,
+                            blockType: 'bullet',
+                            content: benefitItems[bIdx],
+                            displayOrder: bIdx + 1
+                        });
+                    }
+                }
 
                 // Si es un formulario, guardarlo también en la colección forms de coluaRepo
                 if (activeType === 'form_lead') {
@@ -3538,15 +4598,15 @@ class AdminComponent {
 
                 if (window.Swal) {
                     Swal.fire({
-                        title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
-                        text: `"${updated.title}" ha sido guardado exitosamente.`,
+                        title: `¡${activeTypeName} Guardado y Publicado!`,
+                        text: `"${updated.title}" ha sido guardado y publicado en línea con éxito.`,
                         icon: "success",
                         timer: 1600,
                         showConfirmButton: false,
                         draggable: true
                     });
                 } else {
-                    app.showToast(`${activeTypeName} guardado con éxito`, 'success');
+                    app.showToast(`${activeTypeName} guardado y publicado con éxito`, 'success');
                 }
                 await this.loadTabContent();
             } catch (err) {
@@ -3617,6 +4677,9 @@ class AdminComponent {
             let formWebhookUrl = '';
 
             if (activeType === 'pdf_document') {
+                if (currentData.imageUrl) {
+                    updatedImg = currentData.imageUrl;
+                }
                 targetSecVal = document.getElementById('item-section-target')?.value || this.selectedSectionId || 'sec_home';
                 let pdfUrlVal = document.getElementById('item-pdf-url')?.value?.trim() || currentData.pdfUrl || '';
 
@@ -3646,6 +4709,36 @@ class AdminComponent {
                 updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || 'Ver Documento PDF';
             }
 
+            let benefitItems = currentData.benefitItems || [];
+            let jobReqs = currentData.requirements || [];
+            let jobSkills = currentData.skillsList || [];
+            let jobEmail = currentData.leadEmail || '';
+            let jobDeadline = currentData.deadline || '';
+
+            if (activeType === 'benefit_list') {
+                const rawItems = document.getElementById('item-benefit-items')?.value?.trim() || '';
+                benefitItems = rawItems ? rawItems.split('\n').map(i => i.trim()).filter(Boolean) : [];
+                updatedSubtitle = benefitItems.join(', ');
+            } else if (activeType === 'strategic_axis') {
+                const rawProgs = document.getElementById('item-strategic-programs')?.value?.trim() || '';
+                benefitItems = rawProgs ? rawProgs.split('\n').map(p => p.trim()).filter(Boolean) : [];
+            } else if (activeType === 'job_vacancy') {
+                const rawReqs = document.getElementById('item-job-requirements')?.value?.trim() || '';
+                jobReqs = rawReqs ? rawReqs.split('\n').map(r => r.trim()).filter(Boolean) : [];
+
+                const rawSkills = document.getElementById('item-job-skills')?.value?.trim() || '';
+                jobSkills = rawSkills ? rawSkills.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+                const rawBenefits = document.getElementById('item-job-benefits')?.value?.trim() || '';
+                benefitItems = rawBenefits ? rawBenefits.split('\n').map(b => b.trim()).filter(Boolean) : [];
+
+                jobEmail = document.getElementById('item-job-email')?.value?.trim() || 'talentoh@coluarl.com.gt';
+                jobDeadline = document.getElementById('item-job-deadline')?.value?.trim() || '17/09/2026';
+
+                updatedBtnText = document.getElementById('item-btn-text')?.value?.trim() || 'Aplicar enviando CV';
+                updatedBtnAction = 'mailto:' + jobEmail + '?subject=' + encodeURIComponent('Postulación: ' + updatedTitle);
+            }
+
             const updated = {
                 ...currentData,
                 sectionId: targetSecVal,
@@ -3662,15 +4755,18 @@ class AdminComponent {
                 fileSize: currentData.fileSize || 0,
                 leadWhatsapp: updatedLeadWhatsapp,
                 webhookUrl: formWebhookUrl,
-                requirements: formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || []),
+                requirements: activeType === 'job_vacancy' ? jobReqs : (formReqsArray.length > 0 ? formReqsArray : (currentData.requirements || [])),
+                skillsList: jobSkills,
+                leadEmail: jobEmail,
+                deadline: jobDeadline,
                 formQuestions: currentData.formQuestions || [],
-                benefitItems: currentData.benefitItems || [],
+                benefitItems: benefitItems,
                 textHierarchy: document.getElementById('item-text-hierarchy')?.value || currentData.textHierarchy || 'h2',
                 textAlign: document.getElementById('item-text-align')?.value || currentData.textAlign || 'left',
                 isEnabled: isEnabledVal,
                 isVisible: isEnabledVal,
-                isDraft: isDraftVal,
-                isPublished: !isDraftVal,
+                isDraft: false,
+                isPublished: true,
                 lastModified: Date.now()
             };
 
@@ -3681,6 +4777,21 @@ class AdminComponent {
 
             console.log('[COLUA ADMIN] Guardando item:', updated);
             await window.coluaRepo.saveContentItem(updated);
+
+            // Si es un Eje Estratégico, sincronizar cada programa como bloque atómico
+            if (activeType === 'strategic_axis' && benefitItems.length > 0) {
+                for (let bIdx = 0; bIdx < benefitItems.length; bIdx++) {
+                    const blkId = `b_${currentData.id}_${bIdx + 1}`;
+                    await window.coluaRepo.saveContentBlock({
+                        id: blkId,
+                        itemId: currentData.id,
+                        sectionId: targetSecVal,
+                        blockType: 'bullet',
+                        content: benefitItems[bIdx],
+                        displayOrder: bIdx + 1
+                    });
+                }
+            }
             console.log('[COLUA ADMIN] Guardado con éxito.');
 
             if (window.app && window.app.closeModal) {
@@ -3689,14 +4800,14 @@ class AdminComponent {
 
             if (window.Swal) {
                 Swal.fire({
-                    title: isDraftVal ? "¡Guardado como Borrador!" : `¡${activeTypeName} Guardado!`,
-                    text: `"${updated.title}" ha sido guardado exitosamente.`,
+                    title: `¡${activeTypeName} Guardado y Publicado!`,
+                    text: `"${updated.title}" ha sido guardado y publicado en línea con éxito.`,
                     icon: "success",
                     timer: 1800,
                     showConfirmButton: false
                 });
             } else {
-                alert(`¡${updated.title} guardado con éxito!`);
+                alert(`¡${updated.title} guardado y publicado con éxito!`);
             }
 
             await this.loadTabContent();
@@ -3793,402 +4904,10 @@ class AdminComponent {
     }
 
     // ==========================================
-    // TAB 3: CENTRO DE CONTROL DE PUBLICACIÓN
+    // NOTA: El módulo de publicación manual ha sido retirado.
+    // Todas las creaciones, ediciones y eliminaciones de botones, sub-botones,
+    // pantallas y contenidos se publican automáticamente en vivo en tiempo real.
     // ==========================================
-    async renderTabSync(container) {
-        this.syncStatus = await coluaRepo.getSyncStatus();
-
-        container.innerHTML = `
-            <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;">
-                <!-- Encabezado -->
-                <div>
-                    <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 4px 0;">
-                        Centro de Control de Publicación
-                    </h2>
-                    <p style="font-size: 0.85rem; color: var(--colua-gray-600); margin: 0;">
-                        Monitorea versiones, cambios pendientes, sincronización en vivo y publicaciones atómicas.
-                    </p>
-                </div>
-
-                <!-- 1. Estado de Publicación -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-                        <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--colua-navy); margin: 0;">
-                            Estado de Publicación
-                        </h3>
-                        <span class="badge" style="background: ${this.syncStatus.draftsCount > 0 ? '#fffbeb' : '#dcfce7'}; color: ${this.syncStatus.draftsCount > 0 ? '#b45309' : '#15803d'}; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
-                            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;"></span>
-                            ${this.syncStatus.draftsCount > 0 ? 'Borradores pendientes de publicar' : `Todo publicado (${this.syncStatus.version})`}
-                        </span>
-                    </div>
-
-                    <div style="font-size: 0.86rem; color: var(--colua-gray-700); line-height: 1.65; margin-bottom: 16px;">
-                        <div><strong>Borrador local:</strong> ${this.syncStatus.version} | <strong>Publicada:</strong> ${this.syncStatus.publishedVersion}</div>
-                        <div><strong>Última sync:</strong> ${this.syncStatus.lastPublishedAt ? new Date(this.syncStatus.lastPublishedAt).toLocaleString() : 'Reciente'}</div>
-                        <div><strong>Pantallas:</strong> ${this.syncStatus.sectionsCount} | <strong>Elementos:</strong> ${this.syncStatus.itemsCount}</div>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--colua-gray-100);">
-                        <div>
-                            <span style="font-size: 0.88rem; font-weight: 700; color: var(--colua-navy); display: block;">Sincronización en Tiempo Real (Cloud)</span>
-                            <span style="font-size: 0.76rem; color: var(--colua-gray-500);">Actualiza cambios automáticamente a Firestore Cloud</span>
-                        </div>
-                        <label style="position: relative; display: inline-flex; align-items: center; width: 48px; height: 26px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="toggle-realtime-sync" ${this.syncStatus.isRealtimeEnabled !== false ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-                            <span class="switch-slider" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${this.syncStatus.isRealtimeEnabled !== false ? 'var(--colua-green)' : '#cbd5e1'}; transition: 0.3s; border-radius: 26px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);">
-                                <span class="switch-knob" style="position: absolute; content: ''; height: 20px; width: 20px; left: ${this.syncStatus.isRealtimeEnabled !== false ? '25px' : '3px'}; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.25);"></span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 2. Cambios Pendientes de Publicar -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200);">
-                    <h3 style="font-size: 1.12rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 14px 0;">
-                        Cambios Pendientes de Publicar
-                    </h3>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px;">
-                        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #b45309;">Pendientes: ${this.syncStatus.draftsCount}</span>
-                        </div>
-                        <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #15803d;">Nuevos: ${this.syncStatus.newCount}</span>
-                        </div>
-                        <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #1d4ed8;">Editados: ${this.syncStatus.editCount}</span>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Incompletos: ${this.syncStatus.incompleteCount}</span>
-                        </div>
-                    </div>
-
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.82rem; color: var(--colua-gray-600);">
-                        <strong>Actividad reciente:</strong><br/>
-                        ${this.syncStatus.draftsCount === 0 ? `• No hay cambios pendientes. La versión publicada ${this.syncStatus.version} está actualizada.` : `• Hay ${this.syncStatus.draftsCount} cambios en borrador listos para desplegar a producción.`}
-                    </div>
-
-                    <button id="btn-review-changes" class="btn btn-outline" style="width: 100%; padding: 10px; font-size: 0.88rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy);">
-                        Revisar Detalle de Cambios
-                    </button>
-                </div>
-
-                <!-- 3. Borrador Local y Vista Previa -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-                    <!-- Card Borrador Local -->
-                    <div class="card" style="background: white; border-radius: 14px; padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h4 style="font-size: 1.02rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                                Borrador Local del Administrador
-                            </h4>
-                            <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                                Los borradores se guardan en este dispositivo y no son visibles para los usuarios hasta que se publiquen.
-                            </p>
-                        </div>
-                        <button id="btn-save-local-draft" class="btn btn-outline" style="width: 100%; padding: 9px; font-size: 0.85rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy);">
-                            Guardar Borrador Local
-                        </button>
-                    </div>
-
-                    <!-- Card Vista Previa -->
-                    <div class="card" style="background: white; border-radius: 14px; padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h4 style="font-size: 1.02rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                                Vista Previa General Interactiva
-                            </h4>
-                            <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                                Navega por toda la aplicación tal como la verá el usuario público, cargando todos tus cambios en borrador en vivo.
-                            </p>
-                        </div>
-                        <button id="btn-open-preview-live" class="btn" style="width: 100%; padding: 10px; font-size: 0.88rem; font-weight: 700; background: var(--colua-orange); color: white; border: none; border-radius: 10px;">
-                            Abrir Vista Previa General
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 4. Publicación Masiva -->
-                <div class="card" style="background: white; border-radius: 14px; padding: 22px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--colua-navy);">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 6px 0;">
-                        Publicación Masiva
-                    </h3>
-                    <p style="font-size: 0.84rem; color: var(--colua-gray-600); margin: 0 0 16px 0; line-height: 1.45;">
-                        Envía de una sola vez todos los borradores pendientes a la nube para hacerlos visibles a todos los asociados.
-                    </p>
-                    <button id="publish-all-cloud-btn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 0.95rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                        ${ADMIN_ICONS.sync} <span>Publicar Todos los Cambios</span>
-                    </button>
-                </div>
-
-                <!-- 5. Acciones Avanzadas de Restauración e Integridad -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <span style="font-size: 0.76rem; font-weight: 700; color: var(--colua-gray-500); text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
-                        ${ADMIN_ICONS.shieldCheck} Acciones Avanzadas de Restauración e Integridad
-                    </span>
-
-                    <!-- Verificación e Integridad -->
-                    <div class="card" style="background: white; border-radius: 12px; padding: 16px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--colua-navy); margin: 0 0 3px 0;">
-                                Verificación e Integridad
-                            </h4>
-                            <p style="font-size: 0.8rem; color: var(--colua-gray-600); margin: 0;">
-                                Compara la versión local publicada con el servidor para confirmar integridad sin modificar contenido.
-                            </p>
-                        </div>
-                        <button id="btn-verify-integrity" class="btn btn-outline" style="padding: 7px 16px; font-size: 0.82rem; font-weight: 600; color: var(--colua-navy); border-color: var(--colua-navy); flex-shrink: 0;">
-                            Verificar Publicación
-                        </button>
-                    </div>
-
-                    <!-- Reversión de Versión (Rollback) -->
-                    <div class="card" style="background: #f0f9ff; border-radius: 12px; padding: 16px 20px; border: 1px solid #bae6fd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: #0369a1; margin: 0 0 3px 0;">
-                                Reversión de Versión (Rollback)
-                            </h4>
-                            <p style="font-size: 0.8rem; color: #0c4a6e; margin: 0;">
-                                Restablecer la última versión estable aprobada ante cualquier contingencia.
-                            </p>
-                        </div>
-                        <button id="btn-rollback-version" class="btn" style="padding: 7px 18px; font-size: 0.82rem; font-weight: 600; background: #0284c7; color: white; border: none; flex-shrink: 0; border-radius: 8px;">
-                            Revertir
-                        </button>
-                    </div>
-
-                    <!-- Restaurar Datos Iniciales -->
-                    <div class="card" style="background: #fef2f2; border-radius: 12px; padding: 16px 20px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div>
-                            <h4 style="font-size: 0.98rem; font-weight: 700; color: #b91c1c; margin: 0 0 3px 0;">
-                                Restaurar Datos Iniciales
-                            </h4>
-                            <p style="font-size: 0.8rem; color: #7f1d1d; margin: 0;">
-                                Reinicio de fábrica del contenido CMS con los datos oficiales de COLUA MICOOPE.
-                            </p>
-                        </div>
-                        <button id="btn-factory-reset" class="btn" style="padding: 7px 18px; font-size: 0.82rem; font-weight: 600; background: #dc2626; color: white; border: none; flex-shrink: 0; border-radius: 8px;">
-                            Restaurar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Evento Sincronización en Tiempo Real (Cloud)
-        const toggleSync = container.querySelector('#toggle-realtime-sync');
-        if (toggleSync) {
-            toggleSync.addEventListener('change', async (e) => {
-                const isChecked = e.target.checked;
-                const slider = toggleSync.nextElementSibling;
-                const knob = slider ? slider.querySelector('.switch-knob') : null;
-                if (slider) slider.style.backgroundColor = isChecked ? 'var(--colua-green)' : '#cbd5e1';
-                if (knob) knob.style.left = isChecked ? '25px' : '3px';
-
-                await coluaRepo.updateGlobalConfig({ is_realtime_sync: isChecked });
-                Swal.fire({
-                    title: isChecked ? "Sincronización Cloud Activada" : "Sincronización Cloud Pausada",
-                    text: isChecked ? "Los cambios se sincronizarán en vivo con Firestore Cloud." : "Los cambios se guardarán localmente hasta publicar.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-            });
-        }
-
-        // Evento Guardar Borrador Local
-        container.querySelector('#btn-save-local-draft')?.addEventListener('click', () => {
-            Swal.fire({
-                title: "Borrador Guardado",
-                text: "Todos los cambios locales han sido respaldados en el almacenamiento seguro de tu navegador.",
-                icon: "success",
-                timer: 1500,
-                showConfirmButton: false,
-                draggable: true
-            });
-        });
-
-        // Evento Abrir Vista Previa General
-        container.querySelector('#btn-open-preview-live')?.addEventListener('click', async () => {
-            if (window.Swal) {
-                await Swal.fire({
-                    title: "Modo Vista Previa General",
-                    text: "Estás ingresando a la aplicación pública para visualizar todos los cambios en borrador en vivo.",
-                    icon: "info",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-            }
-            window.location.hash = '#inicio';
-        });
-
-        // Evento Revisar Detalle de Cambios
-        container.querySelector('#btn-review-changes')?.addEventListener('click', () => {
-            const list = this.syncStatus.pendingList || [];
-            const modalHtml = `
-                <div style="max-width: 500px; width: 100%;">
-                    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--colua-navy); margin-bottom: 6px;">
-                        Detalle de Cambios en Borrador
-                    </h3>
-                    <p style="font-size: 0.82rem; color: var(--colua-gray-600); margin-bottom: 16px;">
-                        Elementos pendientes de publicación a producción:
-                    </p>
-
-                    <div style="max-height: 48vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-                        ${list.length === 0 ? '<p style="text-align: center; color: var(--colua-gray-500); padding: 20px;">No hay cambios pendientes de publicar.</p>' : list.map(item => `
-                            <div style="padding: 10px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--colua-gray-200); display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <span class="badge" style="background: rgba(23, 55, 137, 0.08); color: var(--colua-navy); font-size: 0.7rem; margin-bottom: 3px; display: inline-block;">${item.type}</span>
-                                    <strong style="display: block; font-size: 0.88rem; color: var(--colua-navy);">${item.title}</strong>
-                                </div>
-                                <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700;">${item.status}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div style="text-align: right; border-top: 1px solid var(--colua-gray-200); padding-top: 12px;">
-                        <button class="btn btn-outline" onclick="app.closeModal()">Cerrar</button>
-                    </div>
-                </div>
-            `;
-            app.showModal(modalHtml);
-        });
-
-        // Evento Publicar Todos los Cambios
-        container.querySelector('#publish-all-cloud-btn')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Publicar Cambios a Producción?",
-                text: "Todos los asociados y visitantes de la aplicación verán inmediatamente la nueva versión.",
-                icon: "question",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#173789",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Publicar Ahora",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                Swal.fire({
-                    title: "Publicando...",
-                    text: "Sincronizando secciones, tarjetas y bloques a Firestore Cloud",
-                    allowOutsideClick: false,
-                    didOpen: () => { Swal.showLoading(); }
-                });
-
-                const res = await coluaRepo.publishCurrentConfiguration();
-
-                if (res.success) {
-                    Swal.fire({
-                        title: "¡Publicación Exitosa!",
-                        text: `Se ha publicado la versión ${res.version} correctamente a toda la plataforma.`,
-                        icon: "success",
-                        timer: 1800,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                    await this.loadTabContent();
-                } else {
-                    Swal.fire({
-                        title: "Error al Publicar",
-                        text: res.error || "Ocurrió un problema durante la sincronización.",
-                        icon: "error",
-                        timer: 2500,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                }
-            }
-        });
-
-        // Evento Verificar Integridad
-        container.querySelector('#btn-verify-integrity')?.addEventListener('click', async () => {
-            const ver = await coluaRepo.verifyPublicationIntegrity();
-            Swal.fire({
-                title: "Integridad Verificada: " + ver.integrity,
-                html: `
-                    <div style="text-align: left; font-size: 0.88rem; line-height: 1.7; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">
-                        <div><strong>Versión actual:</strong> ${ver.version}</div>
-                        <div><strong>Pantallas locales:</strong> ${ver.localSections}</div>
-                        <div><strong>Tarjetas de contenido:</strong> ${ver.localItems}</div>
-                        <div><strong>Bloques atómicos:</strong> ${ver.localBlocks}</div>
-                        <div><strong>Conexión Firestore Cloud:</strong> ${ver.cloudConnected ? 'Conectado y Sincronizado' : 'Modo Local / Offline'}</div>
-                    </div>
-                `,
-                icon: "success",
-                timer: 2000,
-                showConfirmButton: false,
-                draggable: true
-            });
-        });
-
-        // Evento Revertir Versión (Rollback)
-        container.querySelector('#btn-rollback-version')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Revertir a la versión anterior?",
-                text: "Se restaurará el snapshot previo a la última publicación masiva.",
-                icon: "warning",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#0284c7",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Revertir",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                const res = await coluaRepo.rollbackToPreviousVersion();
-                if (res.success) {
-                    Swal.fire({
-                        title: "¡Versión Revertida!",
-                        text: `Se ha restablecido la plataforma a la versión ${res.version}.`,
-                        icon: "success",
-                        timer: 1500,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                    await this.loadTabContent();
-                } else {
-                    Swal.fire({
-                        title: "No se pudo revertir",
-                        text: res.error || "No hay respaldo previo registrado.",
-                        icon: "info",
-                        timer: 2000,
-                        showConfirmButton: false,
-                        draggable: true
-                    });
-                }
-            }
-        });
-
-        // Evento Restaurar Datos Iniciales (Factory Reset)
-        container.querySelector('#btn-factory-reset')?.addEventListener('click', async () => {
-            const confirmRes = await Swal.fire({
-                title: "¿Restaurar Datos de Fábrica?",
-                text: "Esta acción reiniciará todas las secciones, productos y tarjetas a sus valores predeterminados de la cooperativa. (Los usuarios se conservarán).",
-                icon: "warning",
-                draggable: true,
-                showCancelButton: true,
-                confirmButtonColor: "#dc2626",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Sí, Restaurar Todo",
-                cancelButtonText: "Cancelar"
-            });
-
-            if (confirmRes.isConfirmed) {
-                await coluaRepo.resetToFactoryDefaults();
-                Swal.fire({
-                    title: "¡Contenidos Restaurados!",
-                    text: "Se han reestablecido los datos oficiales de fábrica de COLUA MICOOPE.",
-                    icon: "success",
-                    timer: 1500,
-                    showConfirmButton: false,
-                    draggable: true
-                });
-                await this.loadTabContent();
-            }
-        });
-    }
 
     // ==========================================
     // TAB 4: USUARIOS Y ROLES (RBAC)
@@ -5028,6 +5747,651 @@ class AdminComponent {
     }
 
     // ==========================================
+    // TAB: MÓDULO DE REPORTES Y SOLICITUDES DPI
+    // ==========================================
+    async renderTabReportes(container) {
+        const leads = await coluaRepo.getFormLeads();
+        
+        // Helper para extraer campos de DPI de forma compatible
+        const getLeadDpiData = (l) => {
+            const frente = l.fotoDpiFrente || (l.respuestas && (l.respuestas['Foto de tu DPI - Frente (Anverso)'] || l.respuestas['Foto de tu DPI (Ambos lados)'])) || '';
+            const reverso = l.fotoDpiReverso || (l.respuestas && l.respuestas['Foto de tu DPI - Atrás (Reverso)']) || '';
+            const recibo = l.fotoRecibo || (l.respuestas && l.respuestas['Foto de tu Recibo de Luz / Agua reciente']) || '';
+            const pago = l.fotoPago || (l.respuestas && l.respuestas['Comprobante de Pago / Depósito (Opcional)']) || '';
+            const dpi = l.dpi || (l.respuestas && l.respuestas['Número de DPI / CUI']) || '';
+            return { frente, reverso, recibo, pago, dpi };
+        };
+
+        // Métricas en tiempo real
+        const totalLeads = leads.length;
+        const conDpiAmbos = leads.filter(l => {
+            const { frente, reverso } = getLeadDpiData(l);
+            return Boolean(frente && reverso);
+        }).length;
+        const pendientes = leads.filter(l => !l.estado || l.estado === 'Pendiente').length;
+        const afiliados = leads.filter(l => l.estado === 'Afiliado / Coordinado' || l.estado === 'Afiliado').length;
+
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Header con Título y Acciones -->
+                <div style="background: linear-gradient(135deg, #0b1f4c 0%, #173789 100%); border-radius: 16px; padding: 22px 26px; color: white; box-shadow: 0 4px 14px rgba(23,55,137,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <span class="badge" style="background: rgba(255,255,255,0.18); color: #93c5fd; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.25);">ADMINISTRACIÓN & EXPEDIENTES</span>
+                            <span style="font-size: 0.75rem; color: #cbd5e1;">Base de Datos en Tiempo Real</span>
+                        </div>
+                        <h2 style="font-size: 1.35rem; font-weight: 800; margin: 0; color: #ffffff !important; display: flex; align-items: center; gap: 10px;">
+                            ${ADMIN_ICONS.reportes} Módulo de Reportes & Solicitudes de Afiliación
+                        </h2>
+                        <p style="margin: 6px 0 0 0; font-size: 0.86rem; color: rgba(255,255,255,0.85); max-width: 720px; line-height: 1.45;">
+                            Expedientes de asociados, verificación de DPI (Anverso y Reverso), fotos de recibos de servicios y actualización de estado en vivo.
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn" id="btn-reportes-export-csv" style="background: #10b981; color: white; padding: 9px 16px; font-size: 0.84rem; font-weight: 700; border-radius: 10px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(16,185,129,0.3);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Exportar Excel (CSV)</span>
+                        </button>
+                        <button class="btn" id="btn-reportes-print" style="background: rgba(255,255,255,0.15); color: white; padding: 9px 14px; font-size: 0.84rem; font-weight: 700; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            <span>Imprimir</span>
+                        </button>
+                        <button class="btn" id="btn-reportes-reload" style="background: rgba(255,255,255,0.15); color: white; padding: 9px 12px; font-size: 0.84rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;" title="Recargar solicitudes">
+                            ${ADMIN_ICONS.refresh}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tarjetas KPI Resumen -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+                    <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid var(--colua-gray-200); border-left: 4px solid var(--colua-navy); box-shadow: var(--shadow-sm);">
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Solicitudes</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: var(--colua-navy); margin-top: 4px;">${totalLeads}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Expedientes registrados</div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid var(--colua-gray-200); border-left: 4px solid #10b981; box-shadow: var(--shadow-sm);">
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">DPI Completo (2 Lados)</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #047857; margin-top: 4px;">${conDpiAmbos}</div>
+                        <div style="font-size: 0.75rem; color: #059669; margin-top: 2px;">Anverso y Reverso cargados</div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid var(--colua-gray-200); border-left: 4px solid #f59e0b; box-shadow: var(--shadow-sm);">
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">Pendientes de Contacto</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #b45309; margin-top: 4px;">${pendientes}</div>
+                        <div style="font-size: 0.75rem; color: #d97706; margin-top: 2px;">Por coordinar aportación</div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid var(--colua-gray-200); border-left: 4px solid #0284c7; box-shadow: var(--shadow-sm);">
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #0369a1; text-transform: uppercase; letter-spacing: 0.5px;">Afiliados / Coordinados</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #0369a1; margin-top: 4px;">${afiliados}</div>
+                        <div style="font-size: 0.75rem; color: #0284c7; margin-top: 2px;">Proceso completado</div>
+                    </div>
+                </div>
+
+                <!-- Barra de Filtros y Búsqueda -->
+                <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid var(--colua-gray-200); box-shadow: var(--shadow-sm); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                    <div style="position: relative; flex: 1; min-width: 260px;">
+                        <input type="text" id="reportes-search-input" placeholder="Buscar por nombre, DPI / CUI, teléfono o agencia..." style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1.5px solid var(--colua-gray-300); font-size: 0.88rem; outline: none; transition: border-color 0.2s;" />
+                        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none;">
+                            ${ADMIN_ICONS.search}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <select id="reportes-status-filter" style="padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--colua-gray-300); font-size: 0.84rem; background: white; font-weight: 600; color: var(--colua-gray-800); cursor: pointer;">
+                            <option value="todos">Todos los Estados</option>
+                            <option value="Pendiente">⏳ Pendiente</option>
+                            <option value="Contactado">💬 Contactado</option>
+                            <option value="Afiliado / Coordinado">✅ Afiliado / Coordinado</option>
+                            <option value="Descartado">✕ Descartado</option>
+                        </select>
+
+                        <select id="reportes-doc-filter" style="padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--colua-gray-300); font-size: 0.84rem; background: white; font-weight: 600; color: var(--colua-gray-800); cursor: pointer;">
+                            <option value="todos">Todos los Documentos</option>
+                            <option value="con_dpi_completo">Con DPI Frente y Reverso (2 lados)</option>
+                            <option value="con_dpi_frente">Con solo DPI Frente</option>
+                            <option value="sin_dpi">Sin fotos de DPI</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabla Principal de Solicitudes y DPI -->
+                <div class="card" style="background: white; border-radius: 14px; padding: 0; box-shadow: var(--shadow-sm); border: 1px solid var(--colua-gray-200); overflow: hidden;">
+                    <div style="padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--colua-navy); margin: 0;">
+                                Registro de Solicitudes & Documentación de Afiliados
+                            </h3>
+                            <span style="font-size: 0.78rem; color: #64748b;" id="reportes-count-indicator">
+                                Mostrando <strong>${totalLeads}</strong> expedientes registrados
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto; max-width: 100%;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 1100px;" id="reportes-main-table">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.78rem; color: #475569; text-transform: uppercase; letter-spacing: 0.4px;">
+                                    <th style="padding: 12px 14px; width: 40px; text-align: center;">#</th>
+                                    <th style="padding: 12px 14px;">Fecha / Hora</th>
+                                    <th style="padding: 12px 14px;">Solicitante</th>
+                                    <th style="padding: 12px 14px;">Teléfono / WhatsApp</th>
+                                    <th style="padding: 12px 14px;">DPI / CUI</th>
+                                    <th style="padding: 12px 14px; text-align: center;">DPI Anverso (Frente)</th>
+                                    <th style="padding: 12px 14px; text-align: center;">DPI Reverso (Atrás)</th>
+                                    <th style="padding: 12px 14px;">Agencia / Pago</th>
+                                    <th style="padding: 12px 14px;">Estado</th>
+                                    <th style="padding: 12px 14px; text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportes-tbody">
+                                <!-- Filas renderizadas dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="reportes-empty-msg" style="display: none; padding: 48px 20px; text-align: center;">
+                        <div style="font-size: 2.4rem; margin-bottom: 10px;">📋</div>
+                        <h4 style="font-size: 1.1rem; color: var(--colua-navy); margin: 0 0 6px 0; font-weight: 700;">No se encontraron solicitudes</h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Intenta ajustar los términos de búsqueda o el estado seleccionado.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const tbody = container.querySelector('#reportes-tbody');
+        const emptyMsg = container.querySelector('#reportes-empty-msg');
+        const countIndicator = container.querySelector('#reportes-count-indicator');
+        const searchInput = container.querySelector('#reportes-search-input');
+        const statusFilter = container.querySelector('#reportes-status-filter');
+        const docFilter = container.querySelector('#reportes-doc-filter');
+
+        // Función de renderizado de filas filtradas
+        const renderRows = (filteredList) => {
+            if (!filteredList || filteredList.length === 0) {
+                tbody.innerHTML = '';
+                emptyMsg.style.display = 'block';
+                if (countIndicator) countIndicator.innerHTML = 'Mostrando <strong>0</strong> solicitudes';
+                return;
+            }
+
+            emptyMsg.style.display = 'none';
+            if (countIndicator) {
+                countIndicator.innerHTML = `Mostrando <strong>${filteredList.length}</strong> de <strong>${leads.length}</strong> solicitudes`;
+            }
+
+            tbody.innerHTML = filteredList.map((lead, idx) => {
+                const { frente, reverso, dpi } = getLeadDpiData(lead);
+                const cleanPhone = (lead.telefono || '').replace(/[^0-9]/g, '');
+                const waPhone = cleanPhone.startsWith('502') ? cleanPhone : '502' + cleanPhone;
+                const waText = encodeURIComponent(`Hola ${lead.nombre}, te saludamos de COLUA MICOOPE respecto a tu solicitud de afiliación cooperativa en línea. ¿En qué momento podemos coordinar tus requisitos y aportación inicial?`);
+                const waLink = `https://wa.me/${waPhone}?text=${waText}`;
+
+                const statusColor = lead.estado === 'Afiliado / Coordinado' || lead.estado === 'Afiliado'
+                    ? 'background: #dcfce7; color: #15803d; border-color: #86efac;'
+                    : (lead.estado === 'Contactado'
+                        ? 'background: #e0f2fe; color: #0369a1; border-color: #7dd3fc;'
+                        : (lead.estado === 'Descartado'
+                            ? 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;'
+                            : 'background: #fef3c7; color: #b45309; border-color: #fcd34d;'));
+
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 12px 14px; text-align: center; color: #94a3b8; font-size: 0.8rem; font-weight: 700;">
+                            ${idx + 1}
+                        </td>
+                        <td style="padding: 12px 14px; white-space: nowrap; color: #64748b; font-size: 0.82rem;">
+                            <strong style="color: #1e293b;">${lead.fechaStr ? lead.fechaStr.split(',')[0] : (lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'Reciente')}</strong>
+                            <div style="font-size: 0.74rem; color: #94a3b8;">${lead.fechaStr && lead.fechaStr.includes(',') ? lead.fechaStr.split(',')[1] : ''}</div>
+                        </td>
+                        <td style="padding: 12px 14px;">
+                            <div style="font-weight: 700; color: var(--colua-navy); font-size: 0.9rem;">${lead.nombre}</div>
+                            <div style="font-size: 0.76rem; color: #64748b;"><a href="mailto:${lead.email}" style="color: inherit; text-decoration: none;">${lead.email || 'Sin correo'}</a></div>
+                        </td>
+                        <td style="padding: 12px 14px; white-space: nowrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="color: #0f172a; font-size: 0.86rem;">${lead.telefono || 'N/A'}</strong>
+                                ${cleanPhone ? `
+                                    <a href="${waLink}" target="_blank" style="background: #25D366; color: white; padding: 3px 8px; border-radius: 6px; text-decoration: none; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Chatear por WhatsApp con ${lead.nombre}">
+                                        <span>💬 WhatsApp</span>
+                                    </a>
+                                ` : ''}
+                            </div>
+                        </td>
+                        <td style="padding: 12px 14px;">
+                            ${dpi ? `
+                                <span class="badge" style="background: #f1f5f9; color: var(--colua-navy); font-family: monospace; font-size: 0.82rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                    ${dpi}
+                                </span>
+                            ` : `<span style="color: #94a3b8; font-size: 0.78rem; font-style: italic;">Sin DPI</span>`}
+                        </td>
+                        <!-- Foto DPI Frente (Anverso) -->
+                        <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
+                            ${frente ? `
+                                <button type="button" class="btn-reportes-eye-doc" data-lead-id="${lead.id}" data-type="frente" style="background: #eff6ff; border: 1.5px solid #2563eb; color: #1e40af; border-radius: 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(37,99,235,0.08); transition: all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'" title="Ver foto de DPI Anverso (Frente)">
+                                    <span style="font-size: 0.95rem;">👁️</span> <span>Ver Anverso</span>
+                                </button>
+                            ` : `
+                                <span style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">— Sin foto —</span>
+                            `}
+                        </td>
+                        <!-- Foto DPI Reverso (Atrás) -->
+                        <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
+                            ${reverso ? `
+                                <button type="button" class="btn-reportes-eye-doc" data-lead-id="${lead.id}" data-type="reverso" style="background: #f0fdf4; border: 1.5px solid #16a34a; color: #15803d; border-radius: 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(22,163,74,0.08); transition: all 0.15s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'" title="Ver foto de DPI Reverso (Atrás)">
+                                    <span style="font-size: 0.95rem;">👁️</span> <span>Ver Reverso</span>
+                                </button>
+                            ` : `
+                                <span style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">— Sin foto —</span>
+                            `}
+                        </td>
+                        <td style="padding: 12px 14px;">
+                            <div style="font-weight: 600; color: #1e293b; font-size: 0.85rem;">${lead.agenciaPreferida || 'Central'}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${lead.metodoPago || 'Efectivo en Agencia'}</div>
+                        </td>
+                        <td style="padding: 12px 14px;">
+                            <select class="reportes-status-dropdown" data-id="${lead.id}" style="padding: 5px 8px; font-size: 0.78rem; font-weight: 700; border-radius: 8px; border: 1.5px solid; ${statusColor} cursor: pointer;">
+                                <option value="Pendiente" ${(!lead.estado || lead.estado === 'Pendiente') ? 'selected' : ''}>⏳ Pendiente</option>
+                                <option value="Contactado" ${lead.estado === 'Contactado' ? 'selected' : ''}>💬 Contactado</option>
+                                <option value="Afiliado / Coordinado" ${(lead.estado === 'Afiliado / Coordinado' || lead.estado === 'Afiliado') ? 'selected' : ''}>✅ Afiliado / Coordinado</option>
+                                <option value="Descartado" ${lead.estado === 'Descartado' ? 'selected' : ''}>✕ Descartado</option>
+                            </select>
+                        </td>
+                        <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 6px;">
+                                <button class="btn btn-outline btn-reporte-expediente" data-id="${lead.id}" style="padding: 5px 10px; font-size: 0.76rem; font-weight: 700; color: var(--colua-navy); border-color: var(--colua-navy); display: inline-flex; align-items: center; gap: 4px;" title="Ver Expediente Completo con DPI">
+                                    <span>🔍 Ver Expediente</span>
+                                </button>
+                                <button class="btn btn-outline btn-reporte-delete" data-id="${lead.id}" style="padding: 5px 8px; font-size: 0.76rem; color: #ef4444; border-color: #fca5a5;" title="Eliminar Solicitud">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Asignar listeners en botones de ojito para ver fotos DPI
+            tbody.querySelectorAll('.btn-reportes-eye-doc').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const lead = leads.find(l => String(l.id) === String(btn.dataset.leadId));
+                    if (!lead) return;
+                    const { frente, reverso } = getLeadDpiData(lead);
+                    const isFrente = btn.dataset.type === 'frente';
+                    const photo = isFrente ? frente : reverso;
+                    const label = isFrente ? 'DPI Anverso (Frente)' : 'DPI Reverso (Atrás)';
+                    if (photo) {
+                        this.previewDocImage(photo, `${label} - ${lead.nombre}`);
+                    } else {
+                        app.showToast('No se encontró la foto para esta solicitud', 'warning');
+                    }
+                });
+            });
+
+            // Asignar listeners para cambio de estado
+            tbody.querySelectorAll('.reportes-status-dropdown').forEach(select => {
+                select.addEventListener('change', async () => {
+                    const id = select.dataset.id;
+                    const newStatus = select.value;
+                    await coluaRepo.updateSubmissionStatus(id, newStatus);
+                    app.showToast(`Estado de solicitud actualizado a "${newStatus}"`, 'success');
+                    await this.renderTabReportes(container);
+                });
+            });
+
+            // Asignar listeners para Ver Expediente
+            tbody.querySelectorAll('.btn-reporte-expediente').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const lead = leads.find(l => l.id === btn.dataset.id);
+                    if (lead) this.showExpedienteModal(lead);
+                });
+            });
+
+            // Asignar listeners para Eliminar Solicitud
+            tbody.querySelectorAll('.btn-reporte-delete').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    let confirmed = false;
+                    if (window.Swal) {
+                        const res = await Swal.fire({
+                            title: "¿Eliminar expediente?",
+                            text: "Esta acción no se puede deshacer.",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#ef4444",
+                            cancelButtonColor: "#64748b",
+                            confirmButtonText: "Sí, Eliminar",
+                            cancelButtonText: "Cancelar"
+                        });
+                        confirmed = res.isConfirmed;
+                    } else {
+                        confirmed = confirm('¿Eliminar esta solicitud?');
+                    }
+
+                    if (confirmed) {
+                        await coluaRepo.deleteSubmission(btn.dataset.id);
+                        app.showToast('Solicitud eliminada.', 'info');
+                        await this.renderTabReportes(container);
+                    }
+                });
+            });
+        };
+
+        // Función de filtrado interactivo
+        const applyFilters = () => {
+            const query = (searchInput?.value || '').trim().toLowerCase();
+            const statusVal = statusFilter?.value || 'todos';
+            const docVal = docFilter?.value || 'todos';
+
+            const filtered = leads.filter(l => {
+                const { frente, reverso, dpi } = getLeadDpiData(l);
+                const nombre = (l.nombre || '').toLowerCase();
+                const tel = (l.telefono || '').toLowerCase();
+                const email = (l.email || '').toLowerCase();
+                const dpiStr = (dpi || '').toLowerCase();
+                const agencia = (l.agenciaPreferida || '').toLowerCase();
+
+                // Filtro de texto
+                if (query) {
+                    const matchText = nombre.includes(query) || tel.includes(query) || email.includes(query) || dpiStr.includes(query) || agencia.includes(query);
+                    if (!matchText) return false;
+                }
+
+                // Filtro de estado
+                if (statusVal !== 'todos') {
+                    if (statusVal === 'Pendiente' && l.estado && l.estado !== 'Pendiente') return false;
+                    if (statusVal !== 'Pendiente' && l.estado !== statusVal) return false;
+                }
+
+                // Filtro de documentos DPI
+                if (docVal === 'con_dpi_completo') {
+                    if (!frente || !reverso) return false;
+                } else if (docVal === 'con_dpi_frente') {
+                    if (!frente) return false;
+                } else if (docVal === 'sin_dpi') {
+                    if (frente || reverso) return false;
+                }
+
+                return true;
+            });
+
+            renderRows(filtered);
+        };
+
+        // Eventos de la barra de filtros
+        searchInput?.addEventListener('input', applyFilters);
+        statusFilter?.addEventListener('change', applyFilters);
+        docFilter?.addEventListener('change', applyFilters);
+
+        // Eventos de botones superiores
+        container.querySelector('#btn-reportes-export-csv')?.addEventListener('click', () => {
+            this.exportReportesCsv(leads);
+        });
+
+        container.querySelector('#btn-reportes-print')?.addEventListener('click', () => {
+            window.print();
+        });
+
+        container.querySelector('#btn-reportes-reload')?.addEventListener('click', async () => {
+            app.showToast('Actualizando datos en vivo...', 'info');
+            await this.renderTabReportes(container);
+        });
+
+        // Render inicial
+        renderRows(leads);
+    }
+
+    // Modal de Zoom / Previsualización de Fotos de Documentos
+    previewDocImage(dataUrl, title = 'Documento Adjunto') {
+        if (!dataUrl) {
+            if (window.app && app.showToast) app.showToast('No hay imagen disponible para mostrar', 'warning');
+            return;
+        }
+
+        let safeSrc = dataUrl;
+        if (typeof safeSrc === 'string' && safeSrc.trim().startsWith('<svg')) {
+            safeSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent(safeSrc);
+        }
+
+        const modalHtml = `
+            <div style="max-width: 700px; width: 100%; text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
+                    <div>
+                        <span class="badge" style="background: var(--colua-navy); color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">VISOR DE DOCUMENTO</span>
+                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--colua-navy); margin: 3px 0 0 0;">${title}</h3>
+                    </div>
+                </div>
+                <div style="background: #0f172a; border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 280px; max-height: 70vh;">
+                    <img id="preview-doc-lightbox-img" alt="${title}" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <a id="preview-doc-lightbox-download" download="COLUA_${title.replace(/[^a-zA-Z0-9]/g, '_')}.png" class="btn" style="background: #10b981; color: white; padding: 8px 16px; font-size: 0.84rem; font-weight: 700; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>📥 Descargar Foto</span>
+                    </a>
+                    <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 8px 16px;">Cerrar</button>
+                </div>
+            </div>
+        `;
+        app.showModal(modalHtml);
+
+        const imgEl = document.getElementById('preview-doc-lightbox-img');
+        if (imgEl) imgEl.src = safeSrc;
+        const dlBtn = document.getElementById('preview-doc-lightbox-download');
+        if (dlBtn) dlBtn.href = safeSrc;
+    }
+
+    // Modal de Expediente Completo de Afiliación con DPI Frente & Reverso
+    showExpedienteModal(lead) {
+        const cleanPhone = (lead.telefono || '').replace(/[^0-9]/g, '');
+        const waPhone = cleanPhone.startsWith('502') ? cleanPhone : '502' + cleanPhone;
+        const waText = encodeURIComponent(`Hola ${lead.nombre}, te saludamos de COLUA MICOOPE respecto a tu expediente de afiliación cooperativa en línea (DPI: ${lead.dpi || ''})...`);
+        const waLink = `https://wa.me/${waPhone}?text=${waText}`;
+
+        const frente = lead.fotoDpiFrente || (lead.respuestas && (lead.respuestas['Foto de tu DPI - Frente (Anverso)'] || lead.respuestas['Foto de tu DPI (Ambos lados)'])) || '';
+        const reverso = lead.fotoDpiReverso || (lead.respuestas && lead.respuestas['Foto de tu DPI - Atrás (Reverso)']) || '';
+        const recibo = lead.fotoRecibo || (lead.respuestas && lead.respuestas['Foto de tu Recibo de Luz / Agua reciente']) || '';
+        const dpiNumber = lead.dpi || (lead.respuestas && lead.respuestas['Número de DPI / CUI']) || 'No especificado';
+
+        const modalHtml = `
+            <div style="max-width: 720px; width: 100%; text-align: left;">
+                <!-- Encabezado del Expediente -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 2px solid var(--colua-gray-200); padding-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(23,55,137,0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <img src="assets/distintivo_colua.png" alt="COLUA" style="width: 32px; height: 32px; object-fit: contain;" />
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="badge" style="background: var(--colua-navy); color: white; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 4px;">EXPEDIENTE DE AFILIACIÓN</span>
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700;">ID: ${lead.id}</span>
+                            </div>
+                            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--colua-navy); margin: 3px 0 0 0;">
+                                ${lead.nombre}
+                            </h2>
+                        </div>
+                    </div>
+                    <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 8px; border: 1px solid #fde68a;">
+                        ${lead.estado || 'Pendiente'}
+                    </span>
+                </div>
+
+                <div style="max-height: 65vh; overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Datos Generales del Solicitante -->
+                    <div style="background: #f8fafc; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.84rem;">
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Número de DPI / CUI:</span>
+                            <strong style="color: #0f172a; font-size: 0.95rem; font-family: monospace;">${dpiNumber}</strong>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Teléfono / WhatsApp:</span>
+                            <strong style="color: #0f172a;">${lead.telefono || 'N/A'}</strong>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Correo Electrónico:</span>
+                            <span style="color: #0f172a;">${lead.email || 'No proporcionado'}</span>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Agencia Preferida:</span>
+                            <strong style="color: var(--colua-navy);">${lead.agenciaPreferida || 'Sololá Central'}</strong>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Forma de Pago Aportación:</span>
+                            <span style="color: #0f172a;">${lead.metodoPago || 'Efectivo en Agencia (Q100)'}</span>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 0.74rem; display: block; font-weight: 700; text-transform: uppercase;">Fecha de Envío:</span>
+                            <span style="color: #0f172a;">${lead.fechaStr || new Date(lead.createdAt || Date.now()).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Verificación de DPI (Anverso y Reverso) -->
+                    <div style="background: white; border-radius: 12px; border: 1.5px solid #cbd5e1; padding: 14px;">
+                        <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--colua-navy); margin: 0 0 10px 0; display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+                            Verificación de Documento Personal de Identificación (DPI)
+                        </h4>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+                            <!-- Tarjeta DPI Frente (Anverso) -->
+                            <div style="border: 1px solid #93c5fd; border-radius: 10px; padding: 10px; background: #f0f7ff; text-align: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span class="badge" style="background: #173789; color: white; font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;">1. ANVERSO (FRENTE)</span>
+                                    <span style="font-size: 0.72rem; color: #166534; font-weight: 700;">${frente ? '✓ Adjuntado' : '✕ No adjuntado'}</span>
+                                </div>
+                                ${frente ? `
+                                    <div style="margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                                        <button type="button" class="btn-exp-doc-preview" data-doc="frente" style="background: #eff6ff; border: 1.5px solid #2563eb; color: #1e40af; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(37,99,235,0.12); width: 100%; justify-content: center; transition: all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+                                            <span style="font-size: 1.15rem;">👁️</span> <span>Ver Foto DPI Anverso</span>
+                                        </button>
+                                    </div>
+                                    <div style="display: flex; justify-content: center; gap: 8px;">
+                                        <button type="button" class="btn btn-exp-doc-preview" data-doc="frente" style="background: #173789; color: white; padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">👁️ Ampliar</button>
+                                        <a id="exp-dl-frente" download="DPI_Frente_${lead.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.png" class="btn btn-outline" style="padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; text-decoration: none;">📥 Descargar</a>
+                                    </div>
+                                ` : `
+                                    <div style="padding: 30px 10px; color: #94a3b8; font-size: 0.8rem; font-style: italic;">No se subió foto del frente del DPI</div>
+                                `}
+                            </div>
+
+                            <!-- Tarjeta DPI Reverso (Atrás) -->
+                            <div style="border: 1px solid #93c5fd; border-radius: 10px; padding: 10px; background: #f0f7ff; text-align: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span class="badge" style="background: #0369a1; color: white; font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;">2. REVERSO (ATRÁS)</span>
+                                    <span style="font-size: 0.72rem; color: #166534; font-weight: 700;">${reverso ? '✓ Adjuntado' : '✕ No adjuntado'}</span>
+                                </div>
+                                ${reverso ? `
+                                    <div style="margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                                        <button type="button" class="btn-exp-doc-preview" data-doc="reverso" style="background: #f0fdf4; border: 1.5px solid #16a34a; color: #15803d; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(22,163,74,0.12); width: 100%; justify-content: center; transition: all 0.15s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+                                            <span style="font-size: 1.15rem;">👁️</span> <span>Ver Foto DPI Reverso</span>
+                                        </button>
+                                    </div>
+                                    <div style="display: flex; justify-content: center; gap: 8px;">
+                                        <button type="button" class="btn btn-exp-doc-preview" data-doc="reverso" style="background: #0369a1; color: white; padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">👁️ Ampliar</button>
+                                        <a id="exp-dl-reverso" download="DPI_Reverso_${lead.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.png" class="btn btn-outline" style="padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; text-decoration: none;">📥 Descargar</a>
+                                    </div>
+                                ` : `
+                                    <div style="padding: 30px 10px; color: #94a3b8; font-size: 0.8rem; font-style: italic;">No se subió foto de atrás del DPI</div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Si hay foto de recibo de agua/luz -->
+                    ${recibo ? `
+                        <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.84rem; color: var(--colua-navy);">💡 Comprobante de Residencia (Recibo de Luz / Agua)</strong>
+                                <span style="display: block; font-size: 0.74rem; color: #64748b;">Documento adjunto en la solicitud</span>
+                            </div>
+                            <button type="button" class="btn btn-exp-doc-preview" data-doc="recibo" style="background: #173789; color: white; padding: 6px 12px; font-size: 0.74rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">👁️ Ver Documento</button>
+                        </div>
+                    ` : ''}
+
+                    <!-- Respuestas detalladas del formulario -->
+                    ${lead.respuestas ? `
+                        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+                            <strong style="font-size: 0.84rem; color: var(--colua-navy); display: block; margin-bottom: 8px;">Detalle de Respuestas del Formulario:</strong>
+                            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem;">
+                                ${Object.entries(lead.respuestas).map(([q, a]) => {
+                                    if (typeof a === 'string' && (a.startsWith('data:') || a.startsWith('<svg'))) return '';
+                                    return `
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;">
+                                            <span style="color: #64748b; font-weight: 600;">${q}:</span>
+                                            <strong style="color: #0f172a; text-align: right; max-width: 60%;">${a}</strong>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1.5px solid var(--colua-gray-200); padding-top: 14px; margin-top: 10px; flex-wrap: wrap; gap: 8px;">
+                    <a href="${waLink}" target="_blank" class="btn" style="background: #25D366; color: white; padding: 9px 18px; font-weight: 700; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; box-shadow: 0 2px 6px rgba(37,211,102,0.3);">
+                        <span>💬 Abrir Chat de WhatsApp</span>
+                    </a>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-outline" onclick="window.print()" style="padding: 9px 14px; font-size: 0.84rem; font-weight: 600;">🖨️ Imprimir Ficha</button>
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 9px 16px;">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        app.showModal(modalHtml);
+
+        const expInner = document.getElementById('modal-inner-content');
+        if (expInner) {
+            const dlFrente = expInner.querySelector('#exp-dl-frente');
+            if (dlFrente && frente) dlFrente.href = frente;
+            const dlReverso = expInner.querySelector('#exp-dl-reverso');
+            if (dlReverso && reverso) dlReverso.href = reverso;
+
+            expInner.querySelectorAll('.btn-exp-doc-preview').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const doc = btn.dataset.doc;
+                    if (doc === 'frente' && frente) this.previewDocImage(frente, `DPI Anverso (Frente) - ${lead.nombre}`);
+                    else if (doc === 'reverso' && reverso) this.previewDocImage(reverso, `DPI Reverso (Atrás) - ${lead.nombre}`);
+                    else if (doc === 'recibo' && recibo) this.previewDocImage(recibo, `Recibo de Servicios - ${lead.nombre}`);
+                });
+            });
+        }
+    }
+
+    // Exportador de Reportes a Formato CSV Excel
+    exportReportesCsv(leads) {
+        if (!leads || leads.length === 0) {
+            app.showToast('No hay solicitudes para exportar', 'warning');
+            return;
+        }
+
+        const headers = ['Fecha y Hora', 'Nombre del Solicitante', 'Teléfono', 'Email', 'Número de DPI / CUI', 'Tiene DPI Frente (Anverso)', 'Tiene DPI Reverso (Atrás)', 'Agencia Preferida', 'Forma de Pago Aportación', 'Estado Actual'];
+        const rows = leads.map(l => {
+            const fecha = `"${(l.fechaStr || new Date(l.createdAt || Date.now()).toLocaleString()).replace(/"/g, '""')}"`;
+            const nombre = `"${(l.nombre || '').replace(/"/g, '""')}"`;
+            const tel = `"${(l.telefono || '').replace(/"/g, '""')}"`;
+            const email = `"${(l.email || '').replace(/"/g, '""')}"`;
+            const dpi = `"${(l.dpi || (l.respuestas && l.respuestas['Número de DPI / CUI']) || '').replace(/"/g, '""')}"`;
+            const hasFrente = `"${(l.fotoDpiFrente || (l.respuestas && (l.respuestas['Foto de tu DPI - Frente (Anverso)'] || l.respuestas['Foto de tu DPI (Ambos lados)']))) ? 'SÍ' : 'NO'}"`;
+            const hasReverso = `"${(l.fotoDpiReverso || (l.respuestas && l.respuestas['Foto de tu DPI - Atrás (Reverso)'])) ? 'SÍ' : 'NO'}"`;
+            const agencia = `"${(l.agenciaPreferida || 'Central').replace(/"/g, '""')}"`;
+            const pago = `"${(l.metodoPago || 'Efectivo en Agencia').replace(/"/g, '""')}"`;
+            const estado = `"${(l.estado || 'Pendiente').replace(/"/g, '""')}"`;
+
+            return [fecha, nombre, tel, email, dpi, hasFrente, hasReverso, agencia, pago, estado].join(',');
+        });
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `COLUA_Reporte_Solicitudes_DPI_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        app.showToast('Reporte descargado exitosamente en formato CSV (Excel)', 'success');
+    }
+
+    // ==========================================
     // TAB 6: INSTRUCCIONES Y MANUAL COMPLETO CMS
     // ==========================================
     async renderTabInstrucciones(container) {
@@ -5266,8 +6630,8 @@ class AdminComponent {
 
                         <div style="font-size: 0.86rem; color: var(--colua-gray-700); line-height: 1.7; display: flex; flex-direction: column; gap: 12px;">
                             <div>
-                                <strong style="color: var(--colua-navy);">• Pestaña Publicar y Verificación:</strong><br/>
-                                El Centro de Control muestra la versión actual (ej. v33 local vs v32 publicada) y el botón 'Revisar Detalle de Cambios' para auditoría previa antes del despliegue masivo.
+                                <strong style="color: var(--colua-navy);">• Publicación Automática en Tiempo Real:</strong><br/>
+                                Cada sección, botón del menú superior, sub-botón o elemento de contenido se guarda y publica automáticamente a toda la plataforma en tiempo real tan pronto como se crea o edita.
                             </div>
 
                             <div>

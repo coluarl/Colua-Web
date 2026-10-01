@@ -453,6 +453,81 @@ a:hover {
   height: 22px;
   object-fit: contain;
 }
+.drawer-menu-item.active {
+  background: #eff6ff;
+  color: var(--colua-navy);
+  font-weight: 700;
+  border-left: 4px solid var(--colua-navy);
+}
+.drawer-menu-item.active img,
+.drawer-menu-item.active svg {
+  transform: scale(1.08);
+}
+.drawer-menu-item.has-subitems {
+  justify-content: space-between;
+}
+.drawer-item-label {
+  flex: 1;
+  text-align: left;
+}
+.drawer-accordion-btn {
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+.drawer-accordion-btn:hover {
+  background: #e2e8f0;
+  color: var(--colua-navy);
+}
+.drawer-menu-chevron {
+  transition: transform 0.2s ease;
+}
+.drawer-nav-group {
+  margin-bottom: 2px;
+}
+.drawer-submenu-container {
+  background: #f8fafc;
+  border-left: 2.5px solid #93c5fd;
+  margin: 2px 0 6px 1.5rem;
+  padding: 4px 0;
+  border-radius: 0 8px 8px 0;
+}
+.drawer-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 1rem 0.55rem 0.9rem;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.drawer-submenu-item:hover {
+  background: #e2e8f0;
+  color: var(--colua-navy);
+  font-weight: 600;
+}
+.drawer-submenu-item.active {
+  color: #1d4ed8;
+  font-weight: 700;
+  background: #dbeafe;
+}
+.drawer-submenu-item.main-sublink {
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-bottom: 1px dashed #e2e8f0;
+  margin-bottom: 3px;
+  padding-bottom: 6px;
+}
 .drawer-menu-item.logout {
   color: #DC2626;
   border-top: 1px solid var(--border-color);
@@ -3774,6 +3849,34 @@ body {
 .clean-product-card:hover .clean-product-icon-wrap img,
 .clean-product-card:hover .clean-product-icon-wrap svg {
   transform: scale(1.05);
+}
+.pdf-cover-wrap {
+  width: 100%;
+  max-width: 220px;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem auto;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  transition: all 0.25s ease;
+  position: relative;
+}
+.clean-product-card:hover .pdf-cover-wrap {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.15);
+  border-color: #fca5a5;
+}
+.pdf-cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
 }
 .clean-product-name {
   font-size: 1.15rem;
@@ -7102,5 +7205,658 @@ body {
   height: 1px;
   background-color: #f1f5f9;
   margin: 4px 0;
+}
+
+/* ==========================================================================
+   CONVOCATORIAS DE EMPLEO / PLAZAS VACANTES COLUA — BUSCADOR, CONTADOR Y ACORDEÓN
+   ========================================================================== */
+
+/* Sección y Barra de Herramientas */
+.colua-jobs-section {
+  margin-bottom: 2.5rem;
+}
+
+.colua-jobs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.colua-jobs-search-box {
+  position: relative;
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+}
+
+.colua-jobs-search-icon {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.colua-job-search-input {
+  width: 100%;
+  padding: 11px 40px 11px 42px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  outline: none;
+}
+
+.colua-job-search-input:focus {
+  background: #ffffff;
+  border-color: #173789;
+  box-shadow: 0 0 0 3px rgba(23, 55, 137, 0.12);
+}
+
+.colua-job-search-clear {
+  position: absolute;
+  right: 12px;
+  background: #e2e8f0;
+  color: #475569;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.colua-job-search-clear:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.colua-jobs-counter-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.colua-jobs-counter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.colua-jobs-counter-icon {
+  font-size: 1rem;
+}
+
+/* Tarjeta de Plaza Vacante */
+.colua-job-vacancy-card {
+  margin-bottom: 20px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(23, 55, 137, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.colua-job-vacancy-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 8px 24px rgba(23, 55, 137, 0.1);
+}
+
+.colua-job-vacancy-card.is-search-hidden {
+  display: none !important;
+}
+
+/* Encabezado Acordeón */
+.colua-job-card-header {
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-bottom: 1.5px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.colua-job-card-header:hover {
+  background: #f1f5f9;
+}
+
+.colua-job-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.colua-job-briefcase-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #173789 0%, #1e40af 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(23, 55, 137, 0.25);
+}
+
+.colua-job-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.colua-job-card-title {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  word-break: break-word;
+}
+
+.colua-job-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.colua-job-meta-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.colua-job-meta-sede {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.colua-job-meta-tipo {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.colua-job-meta-deadline {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+/* Botón Toggle del Acordeón */
+.colua-job-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #173789;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.colua-job-toggle-btn:hover {
+  background: #173789;
+  color: #ffffff;
+  border-color: #173789;
+}
+
+.colua-job-toggle-icon {
+  transition: transform 0.25s ease;
+}
+
+/* Reglas de Estado del Acordeón */
+.colua-job-vacancy-card.is-collapsed .colua-job-card-body {
+  display: none !important;
+}
+
+.colua-job-vacancy-card.is-collapsed .colua-job-card-header {
+  border-bottom: none;
+}
+
+.colua-job-vacancy-card.is-collapsed .colua-job-toggle-icon {
+  transform: rotate(0deg);
+}
+
+.colua-job-vacancy-card.is-expanded .colua-job-card-body {
+  display: block !important;
+  animation: coluaFadeIn 0.22s ease-out;
+}
+
+.colua-job-vacancy-card.is-expanded .colua-job-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.colua-job-vacancy-card.is-expanded .colua-job-card-header {
+  background: #f8fafc;
+  border-bottom: 1.5px solid #e2e8f0;
+}
+
+@keyframes coluaFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Textos de botones */
+.colua-job-btn-text-desktop {
+  display: inline;
+}
+.colua-job-btn-text-mobile {
+  display: none;
+}
+
+/* Estructura interior de la tarjeta */
+.colua-job-card-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) 1fr;
+}
+
+.colua-job-card-left-col {
+  background: linear-gradient(175deg, #173789 0%, #0c2054 100%);
+  color: white;
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  text-align: center;
+}
+
+.colua-job-official-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  margin-bottom: 10px;
+  color: #93c5fd;
+}
+
+.colua-job-kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #93c5fd;
+  display: block;
+  text-transform: uppercase;
+}
+
+.colua-job-badge-heading {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.8px;
+  margin: 4px 0 8px 0;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.colua-job-logo-divider {
+  padding: 10px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+  margin: 12px 0;
+}
+
+.colua-job-deadline-box {
+  background: rgba(254, 240, 138, 0.18);
+  border: 1px solid rgba(254, 240, 138, 0.4);
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+}
+
+.colua-job-flyer-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.colua-job-flyer-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.colua-job-card-right-col {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.colua-job-meta-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.colua-job-sede-tag {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #166534;
+  background: #dcfce7;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #bbf7d0;
+}
+
+.colua-job-title-large {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #c2410c;
+  margin: 0 0 8px 0;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.colua-job-description {
+  font-size: 0.88rem;
+  color: #475569;
+  margin: 0 0 16px 0;
+  line-height: 1.55;
+}
+
+.colua-job-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.colua-job-detail-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.colua-job-benefits-card {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.colua-job-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.84rem;
+  color: #0f172a;
+}
+
+.colua-job-detail-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.78rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.colua-job-detail-list li {
+  margin-bottom: 4px;
+}
+
+.colua-job-apply-banner {
+  background: #f0f9ff;
+  border: 1.5px solid #bae6fd;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.colua-job-apply-email {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0284c7;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colua-job-apply-email:hover {
+  text-decoration: underline;
+}
+
+.colua-job-apply-btn {
+  padding: 9px 18px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: #173789;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(23, 55, 137, 0.2);
+}
+
+.colua-job-apply-btn:hover {
+  background: #0f2766;
+}
+
+/* Estado sin resultados */
+.colua-job-no-results {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
+  margin: 1.5rem 0;
+}
+
+.colua-job-no-results-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #fef3c7;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+/* ==========================================================================
+   VISTA MÓVIL (<= 768px):
+   "y en vista movil solo mostrar el nombre de las plazas y boton de mostrar mas 
+   para que puedan ver toda la informacion"
+   ========================================================================== */
+@media (max-width: 768px) {
+  .colua-jobs-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .colua-jobs-counter-wrap {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .colua-jobs-counter-pill {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  /* Textos de botón en móvil */
+  .colua-job-btn-text-desktop {
+    display: none !important;
+  }
+  .colua-job-btn-text-mobile {
+    display: inline !important;
+  }
+
+  /* EN VISTA MÓVIL: Ocultar el icono del maletín y los metadatos (sede, chips) del encabezado */
+  .colua-job-briefcase-icon {
+    display: none !important;
+  }
+  .colua-job-header-meta {
+    display: none !important;
+  }
+
+  /* Encabezado en móvil: Distribución limpia de Nombre de la Plaza y Botón 'Mostrar más' */
+  .colua-job-card-header {
+    padding: 14px 14px;
+    gap: 12px;
+    align-items: center;
+    background: #ffffff;
+  }
+
+  .colua-job-header-left {
+    gap: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .colua-job-card-title {
+    font-size: 0.94rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: #0f172a;
+  }
+
+  /* Botón 'Mostrar más' en móvil: estilizado, claro y prominente */
+  .colua-job-toggle-btn {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    border-radius: 8px;
+  }
+
+  .colua-job-toggle-btn:hover {
+    background: #173789;
+    color: #ffffff;
+  }
+
+  /* Cuerpo completo cuando se expande en móvil para ver toda la información */
+  .colua-job-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .colua-job-card-left-col {
+    padding: 20px 16px;
+  }
+
+  .colua-job-card-right-col {
+    padding: 20px 16px;
+  }
+
+  .colua-job-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .colua-job-apply-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .colua-job-apply-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Módulo de Reportes & DPI Thumbnails ── */
+.reportes-img-thumb {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.reportes-img-thumb:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(23, 55, 137, 0.25) !important;
+  border-color: var(--colua-gold) !important;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #cms-tab-content, #cms-tab-content * {
+    visibility: visible;
+  }
+  #cms-tab-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .cms-tab-btn, #btn-reportes-export-csv, #btn-reportes-print, #btn-reportes-reload, #reportes-search-input, #reportes-status-filter, #reportes-doc-filter {
+    display: none !important;
+  }
 }
 
