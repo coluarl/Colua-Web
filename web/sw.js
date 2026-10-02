@@ -1,4 +1,4 @@
-const CACHE_NAME = 'colua-web-digital-v5.6.0';
+const CACHE_NAME = 'colua-web-digital-v6.9.8-asociate-preview';
 const STATIC_ASSETS = [
   './',
   './index.html',

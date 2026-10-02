@@ -19,6 +19,7 @@ class Router {
         let rawHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
         let hash = rawHash.split('?')[0].trim().toLowerCase();
         if (!hash || hash === '/' || hash === '') hash = 'inicio';
+        if (hash === 'mi_empleo' || hash === 'mi-empleo') hash = 'sec_empleo';
 
         this.currentRoute = hash;
 
@@ -32,9 +33,12 @@ class Router {
             window.sidebarComponent.close(false, true);
         }
 
-        // Actualizar navbar desktop y bottom-nav móvil
+        // Actualizar navbar desktop, menú lateral sándwich y bottom-nav móvil
         if (window.navbarComponent && window.navbarComponent.updateActive) {
             window.navbarComponent.updateActive(hash);
+        }
+        if (window.sidebarComponent && window.sidebarComponent.updateActive) {
+            window.sidebarComponent.updateActive(hash);
         }
         if (window.bottomNavComponent && window.bottomNavComponent.updateActive) {
             window.bottomNavComponent.updateActive(hash);

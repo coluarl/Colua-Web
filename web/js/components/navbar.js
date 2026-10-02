@@ -91,7 +91,13 @@ class NavbarComponent {
   }
 
   renderNavItems(clean, isHome) {
-    const items = window.coluaRepository ? window.coluaRepository.getTopNavItemsSync() : [];
+    const rawItems = window.coluaRepository ? window.coluaRepository.getTopNavItemsSync() : [];
+    const items = (rawItems || []).filter(item => {
+      const tgt = (item.targetSectionId || '').trim().toLowerCase();
+      const id = (item.id || '').trim().toLowerCase();
+      return tgt !== 'admin' && tgt !== 'cms' && tgt !== 'administracion' && id !== 'topnav_admin';
+    });
+
     if (!items || items.length === 0) {
       return `
         <button class="nav-link-btn ${isHome ? 'active' : ''}" data-nav="sec_home" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_home') : (window.location.hash='#sec_home')">Inicio</button>
@@ -105,7 +111,8 @@ class NavbarComponent {
         <button class="nav-link-btn ${clean === 'sec_noticias' || clean === 'noticias' ? 'active' : ''}" data-nav="sec_noticias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_noticias') : (window.location.hash='#sec_noticias')">Noticias</button>
         <button class="nav-link-btn ${clean === 'sec_agencias' || clean === 'agencias' ? 'active' : ''}" data-nav="sec_agencias" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_agencias') : (window.location.hash='#sec_agencias')">Agencias</button>
         <button class="nav-link-btn ${clean === 'sec_nosotros' || clean === 'nosotros' ? 'active' : ''}" data-nav="sec_nosotros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Nosotros</button>
-        <button class="nav-link-btn ${clean === 'admin' ? 'active' : ''}" data-nav="admin" onclick="window.coluaRouter ? window.coluaRouter.navigate('admin') : (window.location.hash='#admin')">Portal Administrativo</button>
+        <button class="nav-link-btn ${clean === 'sec_nosotros' ? 'active' : ''}" data-nav="sec_nosotros" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_nosotros') : (window.location.hash='#sec_nosotros')">Gobierno Cooperativo</button>
+        <button class="nav-link-btn ${clean === 'sec_empleo' || clean === 'empleo' ? 'active' : ''}" data-nav="sec_empleo" onclick="window.coluaRouter ? window.coluaRouter.navigate('sec_empleo') : (window.location.hash='#sec_empleo')">Mi empleo</button>
       `;
     }
 
@@ -138,7 +145,7 @@ class NavbarComponent {
                 </a>
                 <div class="nav-dropdown-divider"></div>
               ` : ''}
-              ${item.subItems.map(sub => `
+              ${(item.subItems || []).filter(sub => sub.isVisible !== false).map(sub => `
                 <a href="#${sub.targetSectionId}" class="nav-dropdown-item" onclick="event.preventDefault(); window.coluaRouter ? window.coluaRouter.navigate('${sub.targetSectionId}') : (window.location.hash='#${sub.targetSectionId}')">
                   ${sub.label}
                 </a>
@@ -163,6 +170,8 @@ class NavbarComponent {
       navEl.innerHTML = this.render(currentRoute);
       this.attachEvents();
     }
+    // Sincronizar automáticamente el menú sándwich lateral para móviles y tablets
+    window.sidebarComponent?.refresh();
   }
 
   attachEvents() {

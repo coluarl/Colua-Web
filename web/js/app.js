@@ -58,18 +58,24 @@ const App = {
             this._registerSW();
             this._setupInstallPrompt();
             window.addEventListener('offline', () => this.showToast('Sin conexión — usando datos en caché', 'warning'));
-            window.addEventListener('online',  () => this.showToast('Conexión restablecida', 'success'));
-        } catch (e) {}
+            window.addEventListener('online', () => this.showToast('Conexión restablecida', 'success'));
+        } catch (e) { }
 
         // 8. Sincronización en la nube en tiempo real (Firestore)
         try {
             if (window.coluaRepository) {
                 window.coluaRepository.syncAllFromCloud().then((synced) => {
+                    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+                        window.navbarComponent.refresh();
+                    }
                     if (synced && window.router && (window.location.hash === '#inicio' || window.location.hash === '' || window.location.hash === '#/')) {
                         window.router.handleRouting();
                     }
                 });
                 window.coluaRepository.subscribeToPublishedConfig(() => {
+                    if (window.navbarComponent && typeof window.navbarComponent.refresh === 'function') {
+                        window.navbarComponent.refresh();
+                    }
                     if (window.router) window.router.handleRouting();
                 });
             }
@@ -162,8 +168,8 @@ const App = {
                 </div>
             `;
             document.body.appendChild(m);
-            m.addEventListener('click', e => { 
-                if (e.target === m) this.closeModal(); 
+            m.addEventListener('click', e => {
+                if (e.target === m) this.closeModal();
             });
 
             // Soporte de Gestos Táctiles Móviles / iPhone (Swipe down to dismiss)
@@ -337,7 +343,7 @@ const App = {
             if (window.coluaRepository && item.id) {
                 blocks = await window.coluaRepository.getContentBlocksByItem(item.id);
             }
-        } catch(e) {}
+        } catch (e) { }
 
         const isPdf = item.type === 'pdf_document' || actionTarget.startsWith('pdf:') || actionTarget.toLowerCase().endsWith('.pdf') || (item.pdfUrl && item.pdfUrl.length > 0);
         const iconImg = item.imageUrl || item.imagePath || (isPdf ? 'assets/distintivo_colua.png' : 'assets/distintivo_colua.png');
@@ -359,7 +365,7 @@ const App = {
         } else if (isHttp) {
             ctaClick = `window.open('${actionTarget}','_blank')`;
         } else if (isHash) {
-            ctaClick = `app.closeModal(); if(window.coluaRouter) window.coluaRouter.navigate('${actionTarget.replace('#','')}'); else window.location.hash='${actionTarget}';`;
+            ctaClick = `app.closeModal(); if(window.coluaRouter) window.coluaRouter.navigate('${actionTarget.replace('#', '')}'); else window.location.hash='${actionTarget}';`;
         }
 
         const modalHtml = `
@@ -535,9 +541,9 @@ const App = {
         if (!form || !form.fields || form.fields.length === 0) {
             form = {
                 id: form?.id || 'form_asociate',
-                title: form?.title || 'Formulario de Consultas y Solicitud',
-                subtitle: form?.subtitle || 'Completa tus datos o preguntas para que un asesor te contacte a la brevedad.',
-                buttonText: form?.buttonText || 'Enviar Solicitud y Coordinar Pago',
+                title: 'Solicitud para Asociarte a COLUA MICOOPE',
+                subtitle: 'Requisitos: DPI, Recibo de Luz y Aportación Inicial de Q100.00. Completa tus datos para asociarte.',
+                buttonText: 'Enviar Solicitud',
                 leadWhatsapp: form?.leadWhatsapp || '50277957795',
                 requirements: form?.requirements || [
                     'DPI vigente original o copia legible (o Certificado de Nacimiento)',
@@ -549,12 +555,48 @@ const App = {
                     { id: 'telefono', label: 'Teléfono / WhatsApp', type: 'tel', required: true, placeholder: 'Ej: 5555-1234' },
                     { id: 'email', label: 'Correo Electrónico', type: 'email', required: false, placeholder: 'Ej: juangomez@gmail.com' },
                     { id: 'dpi', label: 'Número de DPI / CUI', type: 'text', required: false, placeholder: 'Ej: 1234 56789 0101' },
-                    { id: 'foto_dpi', label: 'Foto de tu DPI (Ambos lados)', type: 'file', required: false },
+                    { id: 'foto_dpi_frente', label: 'Foto de tu DPI - Frente (Anverso)', type: 'file', required: false },
+                    { id: 'foto_dpi_reverso', label: 'Foto de tu DPI - Atrás (Reverso)', type: 'file', required: false },
                     { id: 'foto_recibo_luz', label: 'Foto de tu Recibo de Luz / Agua reciente', type: 'file', required: false },
                     { id: 'metodo_pago', label: 'Forma de pago de aportación inicial (Q100.00)', type: 'select', required: true, options: ['Pago en Efectivo en Agencia', 'Transferencia Bancaria', 'Coordinar con Asesor por WhatsApp'] },
                     { id: 'consulta', label: '¿Alguna duda o comentario adicional?', type: 'textarea', required: false, placeholder: 'Escribe aquí tu duda o mejor horario para llamarte...' }
                 ]
             };
+        } else {
+            // Garantizar que el botón siempre sea 'Enviar Solicitud'
+            form.buttonText = 'Enviar Solicitud';
+
+            // Garantizar que si el formulario tiene foto_dpi antiguo, se descomponga en Frente y Reverso
+            const hasDpiFrente = form.fields.some(f => f.id === 'foto_dpi_frente');
+            if (!hasDpiFrente) {
+                const oldIdx = form.fields.findIndex(f => f.id === 'foto_dpi');
+                const dualFields = [
+                    { id: 'foto_dpi_frente', label: 'Foto de tu DPI - Frente (Anverso)', type: 'file', required: false },
+                    { id: 'foto_dpi_reverso', label: 'Foto de tu DPI - Atrás (Reverso)', type: 'file', required: false }
+                ];
+                if (oldIdx >= 0) {
+                    form.fields.splice(oldIdx, 1, ...dualFields);
+                } else {
+                    const dpiIdx = form.fields.findIndex(f => f.id === 'dpi');
+                    if (dpiIdx >= 0) {
+                        form.fields.splice(dpiIdx + 1, 0, ...dualFields);
+                    } else {
+                        form.fields.push(...dualFields);
+                    }
+                }
+            }
+        }
+
+        if (form.id === 'form_asociate') {
+            if (!form.title || form.title.toLowerCase().includes('consultas')) {
+                form.title = 'Solicitud para Asociarte a COLUA MICOOPE';
+            }
+            if (!form.subtitle || form.subtitle.toLowerCase().includes('consultas')) {
+                form.subtitle = 'Requisitos: DPI, Recibo de Luz y Aportación Inicial de Q100.00. Completa tus datos para asociarte.';
+            }
+        } else if (form.title && form.title.toLowerCase().includes('consultas')) {
+            form.title = 'Solicitud para Asociarte a COLUA MICOOPE';
+            form.subtitle = 'Requisitos: DPI, Recibo de Luz y Aportación Inicial de Q100.00. Completa tus datos para asociarte.';
         }
 
         this._formUploadedFiles = {};
@@ -592,68 +634,123 @@ const App = {
                 ` : ''}
 
                 <!-- Formulario de Preguntas & Respuestas -->
-                <form id="dynamic-lead-form" style="display: flex; flex-direction: column; gap: 12px; max-height: 52vh; overflow-y: auto; padding-right: 4px;">
+                <form id="dynamic-lead-form" novalidate style="display: flex; flex-direction: column; gap: 12px; max-height: 52vh; overflow-y: auto; padding-right: 4px;">
                     ${form.fields.map(f => {
-                        const isReq = f.required ? 'required' : '';
-                        if (f.type === 'select') {
-                            return `
+            if (f.id === 'foto_dpi_frente') {
+                // Renderizar contenedor especializado para subir DOS fotos de DPI (Frente y Reverso)
+                return `
+                    <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px 14px; margin: 4px 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <label style="font-size: 0.84rem; font-weight: 800; color: var(--colua-navy); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+                                Fotos de tu DPI (Ambos lados) ${f.required ? '<span style="color: #ef4444;">*</span>' : ''}
+                            </label>
+                            <span style="font-size: 0.7rem; color: #0369a1; background: #e0f2fe; padding: 2px 8px; border-radius: 10px; font-weight: 700;">2 Fotos</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0 0 10px 0;">Sube una foto clara del <strong>Anverso (Frente)</strong> y del <strong>Reverso (Atrás)</strong> de tu DPI.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;">
+                            <!-- 1. DPI Frente (Anverso) -->
+                            <div style="border: 2px dashed #93c5fd; border-radius: 10px; padding: 10px; text-align: center; background: #ffffff; transition: all 0.2s;" id="dropzone-foto_dpi_frente">
+                                <input type="file" id="lead-foto_dpi_frente" name="foto_dpi_frente" data-label="Foto de tu DPI - Frente (Anverso)" accept="image/*,application/pdf" style="display: none;" onchange="app.handleFormFileUpload('foto_dpi_frente', this)" />
+                                <label for="lead-foto_dpi_frente" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0;">
+                                    <span class="badge" style="background: #173789; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 4px;">1. ANVERSO (FRENTE)</span>
+                                    <div style="display: flex; align-items: center; gap: 6px; color: #166534; font-weight: 700; font-size: 0.8rem;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                        <span id="preview-text-foto_dpi_frente">Foto del Frente</span>
+                                    </div>
+                                    <span style="font-size: 0.69rem; color: #64748b;">Lado con fotografía y CUI</span>
+                                </label>
+                                <div id="preview-img-container-foto_dpi_frente" style="display: none; margin-top: 6px; text-align: center;">
+                                    <img id="preview-img-foto_dpi_frente" src="" style="max-height: 90px; max-width: 100%; border-radius: 6px; border: 1.5px solid #86efac; box-shadow: 0 2px 4px rgba(0,0,0,0.06); object-fit: contain;" />
+                                    <span id="preview-filename-foto_dpi_frente" style="display: block; font-size: 0.68rem; color: #15803d; font-weight: 600; margin-top: 2px;"></span>
+                                    <button type="button" onclick="app.clearFormFileUpload('foto_dpi_frente')" style="background: #fee2e2; color: #b91c1c; border: none; border-radius: 4px; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; margin-top: 4px; cursor: pointer;">✕ Quitar foto</button>
+                                </div>
+                            </div>
+
+                            <!-- 2. DPI Atrás (Reverso) -->
+                            <div style="border: 2px dashed #93c5fd; border-radius: 10px; padding: 10px; text-align: center; background: #ffffff; transition: all 0.2s;" id="dropzone-foto_dpi_reverso">
+                                <input type="file" id="lead-foto_dpi_reverso" name="foto_dpi_reverso" data-label="Foto de tu DPI - Atrás (Reverso)" accept="image/*,application/pdf" style="display: none;" onchange="app.handleFormFileUpload('foto_dpi_reverso', this)" />
+                                <label for="lead-foto_dpi_reverso" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0;">
+                                    <span class="badge" style="background: #0369a1; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 4px;">2. REVERSO (ATRÁS)</span>
+                                    <div style="display: flex; align-items: center; gap: 6px; color: #166534; font-weight: 700; font-size: 0.8rem;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                        <span id="preview-text-foto_dpi_reverso">Foto de Atrás</span>
+                                    </div>
+                                    <span style="font-size: 0.69rem; color: #64748b;">Lado con código de barras y firma</span>
+                                </label>
+                                <div id="preview-img-container-foto_dpi_reverso" style="display: none; margin-top: 6px; text-align: center;">
+                                    <img id="preview-img-foto_dpi_reverso" src="" style="max-height: 90px; max-width: 100%; border-radius: 6px; border: 1.5px solid #86efac; box-shadow: 0 2px 4px rgba(0,0,0,0.06); object-fit: contain;" />
+                                    <span id="preview-filename-foto_dpi_reverso" style="display: block; font-size: 0.68rem; color: #15803d; font-weight: 600; margin-top: 2px;"></span>
+                                    <button type="button" onclick="app.clearFormFileUpload('foto_dpi_reverso')" style="background: #fee2e2; color: #b91c1c; border: none; border-radius: 4px; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; margin-top: 4px; cursor: pointer;">✕ Quitar foto</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (f.id === 'foto_dpi_reverso') {
+                // Ya renderizado en el bloque dual junto al frente
+                return '';
+            } else if (f.type === 'select') {
+                return `
                                 <div>
                                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-800); margin-bottom: 4px;">
                                         ${f.label} ${f.required ? '<span style="color: #ef4444;">*</span>' : ''}
                                     </label>
-                                    <select name="${f.id}" id="lead-${f.id}" data-label="${f.label}" ${isReq} style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; background: white; color: var(--colua-gray-800);">
+                                    <select name="${f.id}" id="lead-${f.id}" data-label="${f.label}" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; background: white; color: var(--colua-gray-800);">
                                         <option value="">(Selecciona una opción...)</option>
                                         ${(f.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                                     </select>
                                 </div>
                             `;
-                        } else if (f.type === 'textarea') {
-                            return `
+            } else if (f.type === 'textarea') {
+                return `
                                 <div>
                                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-800); margin-bottom: 4px;">
                                         ${f.label} ${f.required ? '<span style="color: #ef4444;">*</span>' : ''}
                                     </label>
-                                    <textarea name="${f.id}" id="lead-${f.id}" data-label="${f.label}" ${isReq} placeholder="${f.placeholder || 'Escribe tu respuesta aquí...'}" rows="3" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; font-family: inherit; resize: vertical;"></textarea>
+                                    <textarea name="${f.id}" id="lead-${f.id}" data-label="${f.label}" placeholder="${f.placeholder || 'Escribe tu respuesta aquí...'}" rows="3" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem; font-family: inherit; resize: vertical;"></textarea>
                                 </div>
                             `;
-                        } else if (f.type === 'file' || f.type === 'image') {
-                            return `
+            } else if (f.type === 'file' || f.type === 'image') {
+                return `
                                 <div>
                                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-800); margin-bottom: 4px;">
                                         ${f.label} ${f.required ? '<span style="color: #ef4444;">*</span>' : ''}
                                     </label>
                                     <div style="border: 2px dashed #93c5fd; border-radius: 10px; padding: 12px; text-align: center; background: #f0fdf4; transition: all 0.2s;" id="dropzone-${f.id}">
-                                        <input type="file" id="lead-${f.id}" name="${f.id}" data-label="${f.label}" accept="image/*,application/pdf" ${isReq} style="display: none;" onchange="app.handleFormFileUpload('${f.id}', this)" />
+                                        <input type="file" id="lead-${f.id}" name="${f.id}" data-label="${f.label}" accept="image/*,application/pdf" style="display: none;" onchange="app.handleFormFileUpload('${f.id}', this)" />
                                         <label for="lead-${f.id}" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0;">
                                             <div style="display: flex; align-items: center; gap: 6px; color: #166534; font-weight: 700; font-size: 0.84rem;">
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                                                <span id="preview-text-${f.id}">📸 Adjuntar Foto (DPI, Recibo de luz, etc.)</span>
+                                                <span id="preview-text-${f.id}">📸 Adjuntar Foto</span>
                                             </div>
                                             <span style="font-size: 0.72rem; color: #4b5563;">Toca para tomar foto con tu cámara o subir archivo</span>
                                         </label>
                                         <div id="preview-img-container-${f.id}" style="display: none; margin-top: 8px; text-align: center;">
-                                            <img id="preview-img-${f.id}" src="" style="max-height: 105px; max-width: 100%; border-radius: 8px; border: 1.5px solid #86efac; box-shadow: 0 2px 4px rgba(0,0,0,0.06);" />
+                                            <img id="preview-img-${f.id}" src="" style="max-height: 105px; max-width: 100%; border-radius: 8px; border: 1.5px solid #86efac; box-shadow: 0 2px 4px rgba(0,0,0,0.06); object-fit: contain;" />
                                             <span id="preview-filename-${f.id}" style="display: block; font-size: 0.72rem; color: #15803d; font-weight: 600; margin-top: 3px;"></span>
+                                            <button type="button" onclick="app.clearFormFileUpload('${f.id}')" style="background: #fee2e2; color: #b91c1c; border: none; border-radius: 4px; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; margin-top: 4px; cursor: pointer;">✕ Quitar foto</button>
                                         </div>
                                     </div>
                                 </div>
                             `;
-                        } else {
-                            return `
+            } else {
+                return `
                                 <div>
                                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--colua-gray-800); margin-bottom: 4px;">
                                         ${f.label} ${f.required ? '<span style="color: #ef4444;">*</span>' : ''}
                                     </label>
-                                    <input type="${f.type || 'text'}" name="${f.id}" id="lead-${f.id}" data-label="${f.label}" ${isReq} placeholder="${f.placeholder || 'Ingresa tu respuesta...'}" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem;" />
+                                    <input type="${f.type || 'text'}" name="${f.id}" id="lead-${f.id}" data-label="${f.label}" placeholder="${f.placeholder || 'Ingresa tu respuesta...'}" style="width: 100%; padding: 9px 12px; border: 1.5px solid var(--colua-gray-300); border-radius: 8px; font-size: 0.88rem;" />
                                 </div>
                             `;
-                        }
-                    }).join('')}
+            }
+        }).join('')}
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--colua-gray-200); padding-top: 14px; margin-top: 6px;">
                         <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 9px 16px;">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" style="padding: 9px 22px; font-weight: 700; background: var(--colua-navy); display: inline-flex; align-items: center; gap: 8px;">
-                            <span>${form.buttonText || 'Enviar Solicitud y Coordinar'}</span>
+                        <button type="submit" id="btn-submit-dynamic-lead" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; background: var(--colua-navy); display: inline-flex; align-items: center; gap: 8px;">
+                            <span>Enviar Solicitud</span>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                         </button>
                     </div>
@@ -667,8 +764,71 @@ const App = {
         if (formEl) {
             formEl.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+
+                const submitBtn = document.getElementById('btn-submit-dynamic-lead') || formEl.querySelector('button[type="submit"]');
                 const formData = new FormData(formEl);
-                
+
+                // Validación manual de campos requeridos (evita que el navegador bloquee silenciosamente el submit)
+                const missingFields = [];
+                form.fields.forEach(f => {
+                    if (f.required) {
+                        if (f.type === 'file' || f.type === 'image') {
+                            const hasFile = app._formUploadedFiles && app._formUploadedFiles[f.id];
+                            if (!hasFile) missingFields.push(f.label);
+                        } else {
+                            const val = (formData.get(f.id) || '').trim();
+                            if (!val) missingFields.push(f.label);
+                        }
+                    }
+                });
+
+                if (missingFields.length > 0) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Campos requeridos',
+                            html: `
+                                <div style="text-align: left; font-size: 0.9rem; color: #334155;">
+                                    Por favor completa los siguientes campos obligatorios para continuar:
+                                    <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #dc2626; font-weight: 600;">
+                                        ${missingFields.map(m => `<li>${m}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            `,
+                            confirmButtonColor: '#173789',
+                            confirmButtonText: 'Completar datos'
+                        });
+                    } else {
+                        app.showToast('Por favor completa los campos requeridos', 'warning');
+                    }
+                    return;
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                        <span>Guardando solicitud en la nube...</span>
+                    `;
+                }
+
+                // Subir fotos a la nube (Supabase Storage / compresión) para que no saturen la base de datos
+                if (window.supabaseStorageManager && typeof window.supabaseStorageManager.uploadImage === 'function') {
+                    for (const [fId, fileObj] of Object.entries(app._formUploadedFiles || {})) {
+                        if (fileObj && fileObj.file) {
+                            try {
+                                const upRes = await window.supabaseStorageManager.uploadImage(fileObj.file);
+                                if (upRes && upRes.success && upRes.url) {
+                                    fileObj.dataUrl = upRes.url;
+                                }
+                            } catch (upErr) {
+                                console.warn('[Storage] Error subiendo imagen a la nube:', upErr);
+                            }
+                        }
+                    }
+                }
+
                 const answersMap = {};
                 let primaryName = '';
                 let primaryPhone = '';
@@ -679,8 +839,8 @@ const App = {
                     if (f.type === 'file' || f.type === 'image') {
                         const fileObj = app._formUploadedFiles ? app._formUploadedFiles[f.id] : null;
                         if (fileObj) {
-                            answersMap[f.label] = fileObj.dataUrl || `[Foto adjuntada: ${fileObj.name}]`;
-                            attachedFiles.push({ fieldId: f.id, label: f.label, name: fileObj.name, dataUrl: fileObj.dataUrl });
+                            answersMap[f.label] = fileObj.name ? `[Foto adjuntada: ${fileObj.name}]` : 'Foto adjuntada';
+                            attachedFiles.push({ fieldId: f.id, label: f.label, name: fileObj.name });
                         } else {
                             answersMap[f.label] = 'No adjuntado';
                         }
@@ -695,25 +855,58 @@ const App = {
 
                 if (!primaryName) primaryName = Object.values(answersMap)[0] || 'Visitante Web';
 
+                // Extracción de datos específicos de DPI y fotos
+                const fotoDpiFrente = app._formUploadedFiles?.['foto_dpi_frente']?.dataUrl || app._formUploadedFiles?.['foto_dpi']?.dataUrl || '';
+                const fotoDpiReverso = app._formUploadedFiles?.['foto_dpi_reverso']?.dataUrl || '';
+                const fotoReciboLuz = app._formUploadedFiles?.['foto_recibo_luz']?.dataUrl || '';
+                const fotoPago = app._formUploadedFiles?.['foto_pago']?.dataUrl || '';
+                const dpiValue = (formData.get('dpi') || answersMap['Número de DPI / CUI'] || '').trim();
+                const agenciaVal = (formData.get('agencia') || answersMap['Agencia de tu Preferencia'] || 'Sololá Central').trim();
+                const metodoPagoVal = (formData.get('metodo_pago') || answersMap['Forma de pago de aportación inicial (Q100.00)'] || 'Pago en Efectivo en Agencia').trim();
+
                 const leadData = {
                     formId: form.id,
                     formTitle: form.title,
                     nombre: primaryName,
                     telefono: primaryPhone || 'No proporcionado',
                     email: primaryEmail || 'No proporcionado',
+                    dpi: dpiValue,
+                    fotoDpiFrente: fotoDpiFrente,
+                    fotoDpiReverso: fotoDpiReverso,
+                    fotoRecibo: fotoReciboLuz,
+                    fotoPago: fotoPago,
+                    agenciaPreferida: agenciaVal,
+                    metodoPago: metodoPagoVal,
                     respuestas: answersMap,
                     archivosAdjuntos: attachedFiles,
-                    comentarios: Object.entries(answersMap).map(([k, v]) => {
-                        const cleanVal = typeof v === 'string' && v.startsWith('data:') ? '[📸 Foto adjuntada por el asociado]' : v;
-                        return `${k}: ${cleanVal}`;
-                    }).join('\n')
+                    estado: 'Pendiente',
+                    createdAt: Date.now(),
+                    fechaStr: new Date().toLocaleString(),
+                    comentarios: Object.entries(answersMap).map(([k, v]) => `${k}: ${v}`).join('\n')
                 };
 
-                if (window.coluaRepository) {
-                    await window.coluaRepository.submitFormLead(leadData);
+                try {
+                    const repo = window.coluaRepository || window.coluaRepo;
+                    if (repo && typeof repo.submitFormLead === 'function') {
+                        await repo.submitFormLead(leadData);
+                    }
+                } catch (saveErr) {
+                    console.error('Error al guardar lead en repositorio:', saveErr);
                 }
 
-                // Si tiene webhook / enlace de Google Sheets / Excel en red configurado
+                // Guardado directo de respaldo en base de datos de Supabase (PostgREST)
+                if (window.supabaseStorageManager && typeof window.supabaseStorageManager.submitLeadToSupabase === 'function') {
+                    try {
+                        const supaRes = await window.supabaseStorageManager.submitLeadToSupabase(leadData);
+                        if (supaRes && supaRes.success) {
+                            console.log('[App] ✓ Solicitud sincronizada con Supabase Database:', supaRes.table);
+                        }
+                    } catch (supaErr) {
+                        console.warn('[App] Error al enviar a Supabase DB:', supaErr);
+                    }
+                }
+
+                // Notificación opcional por webhook si está configurada
                 if (form.webhookUrl && form.webhookUrl.startsWith('http')) {
                     try {
                         fetch(form.webhookUrl, {
@@ -730,52 +923,36 @@ const App = {
                                 email: primaryEmail,
                                 respuestas: answersMap
                             })
-                        }).catch(e => console.warn('[COLUA Webhook] Notificación en red enviada.'));
+                        }).catch(e => console.warn('[COLUA Webhook] Notificación enviada.'));
                     } catch (e) {
                         console.warn('[COLUA Webhook] Error al disparar webhook:', e);
                     }
                 }
 
+                // Cerrar el modal del formulario
                 app.closeModal();
 
-                // Construcción de mensaje estructurado de WhatsApp
-                const rawWhatsapp = (form.leadWhatsapp || '50277957795').replace(/[^0-9]/g, '') || '50277957795';
-                const lines = [`*Solicitud y Respuestas - COLUA MICOOPE*`, `*Formulario:* ${form.title}`];
-                Object.entries(answersMap).forEach(([q, a]) => {
-                    if (a) {
-                        const displayVal = (typeof a === 'string' && a.startsWith('data:')) ? '📸 [Foto adjuntada en web / lista para confirmar]' : a;
-                        lines.push(`• *${q}:* ${displayVal}`);
-                    }
-                });
-                const waMessage = encodeURIComponent(lines.join('\n'));
-                const waUrl = `https://wa.me/${rawWhatsapp}?text=${waMessage}`;
+                // Mensaje solicitado por el usuario:
+                // "gracias por enviar datos se comunicaran al numero registrado."
+                const confirmMsg = "Gracias por enviar datos, se comunicarán al número registrado.";
 
                 if (window.Swal) {
                     Swal.fire({
-                        title: "¡Solicitud Recibida con Éxito!",
+                        title: "¡Solicitud Enviada con Éxito!",
                         html: `
-                            <div style="text-align: left; font-size: 0.9rem; color: #334155; line-height: 1.55;">
-                                <p style="margin-bottom: 12px;">
-                                    Tus datos y comprobantes han sido registrados en la administración de <strong>COLUA MICOOPE</strong>.
+                            <div style="font-size: 1.05rem; color: #1e293b; padding: 10px 0 4px 0;">
+                                <p style="margin: 0; font-weight: 600; line-height: 1.55;">
+                                    ${confirmMsg}
                                 </p>
-                                <p style="margin-bottom: 14px; font-size: 0.84rem; color: #64748b;">
-                                    Puedes abrir el chat de WhatsApp ahora mismo para coordinar el pago de tu aportación y el seguimiento de tu afiliación con un asesor:
-                                </p>
-                                <div style="margin-top: 14px; display: flex; justify-content: center;">
-                                    <a href="${waUrl}" target="_blank" style="background: #25D366; color: white; padding: 10px 18px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 8px;">
-                                        <span>💬 Coordinar Pago y Afiliación por WhatsApp</span>
-                                    </a>
-                                </div>
                             </div>
                         `,
                         icon: "success",
                         confirmButtonColor: "#173789",
                         confirmButtonText: "Entendido",
-                        draggable: true
+                        allowOutsideClick: false
                     });
-                } else {
-                    app.showToast('¡Solicitud enviada exitosamente al administrador!', 'success');
                 }
+                app.showToast(confirmMsg, "success", 6000);
             });
         }
     },
@@ -789,6 +966,7 @@ const App = {
             const result = e.target.result;
             if (!this._formUploadedFiles) this._formUploadedFiles = {};
             this._formUploadedFiles[fieldId] = {
+                file: file,
                 name: file.name,
                 size: file.size,
                 type: file.type,
@@ -800,7 +978,11 @@ const App = {
             const txt = document.getElementById(`preview-text-${fieldId}`);
             const fn = document.getElementById(`preview-filename-${fieldId}`);
 
-            if (txt) txt.textContent = `✓ Foto lista: ${file.name}`;
+            if (txt) {
+                if (fieldId === 'foto_dpi_frente') txt.textContent = `✓ Anverso cargado: ${file.name.substring(0, 16)}...`;
+                else if (fieldId === 'foto_dpi_reverso') txt.textContent = `✓ Reverso cargado: ${file.name.substring(0, 16)}...`;
+                else txt.textContent = `✓ Foto lista: ${file.name}`;
+            }
             if (fn) fn.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
             if (img && result.startsWith('data:image')) {
                 img.src = result;
@@ -810,6 +992,24 @@ const App = {
             }
         };
         reader.readAsDataURL(file);
+    },
+
+    clearFormFileUpload(fieldId) {
+        if (this._formUploadedFiles && this._formUploadedFiles[fieldId]) {
+            delete this._formUploadedFiles[fieldId];
+        }
+        const input = document.getElementById(`lead-${fieldId}`);
+        if (input) input.value = '';
+        const container = document.getElementById(`preview-img-container-${fieldId}`);
+        if (container) container.style.display = 'none';
+        const img = document.getElementById(`preview-img-${fieldId}`);
+        if (img) img.src = '';
+        const txt = document.getElementById(`preview-text-${fieldId}`);
+        if (txt) {
+            if (fieldId === 'foto_dpi_frente') txt.textContent = 'Foto del Frente';
+            else if (fieldId === 'foto_dpi_reverso') txt.textContent = 'Foto de Atrás';
+            else txt.textContent = '📸 Adjuntar Foto';
+        }
     },
 
     // ── Toast ──────────────────────────────────────
@@ -825,9 +1025,9 @@ const App = {
         const t = document.createElement('div');
         t.className = 'toast toast-' + type;
         t.style.cssText = 'display:flex;align-items:center;gap:10px;';
-        t.innerHTML = '<span>' + (svgIcons[type]||svgIcons.info) + '</span><span>' + message + '</span>';
+        t.innerHTML = '<span>' + (svgIcons[type] || svgIcons.info) + '</span><span>' + message + '</span>';
         this.toastContainer.appendChild(t);
-        setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(8px)'; setTimeout(() => t.remove(), 350); }, 3500);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; setTimeout(() => t.remove(), 350); }, 3500);
     },
 
     // ── Login Modal ───────────────────────────────
@@ -1364,7 +1564,7 @@ const App = {
                         };
                     }
                 };
-            }).catch(() => {});
+            }).catch(() => { });
         }
     },
 
